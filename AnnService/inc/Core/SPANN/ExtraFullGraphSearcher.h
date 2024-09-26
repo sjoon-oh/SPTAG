@@ -1,6 +1,11 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+#pragma once
+
+// Author: Sukjoon Oh (sjoon@kaist.ac.kr)
+#define _TRACK_OFFSET_
+
 #ifndef _SPTAG_SPANN_EXTRASEARCHER_H_
 #define _SPTAG_SPANN_EXTRASEARCHER_H_
 
@@ -16,11 +21,33 @@
 #include <future>
 #include <numeric>
 
+// Author: Sukjoon Oh (sjoon@kaist.ac.kr)
+// 
+
+#include <chrono>
+
+#if defined(_TRACT_OFFSET_)
+#if defined(__GNUC__) && defined(__cplusplus)
+    #if (__GNUC__ >= 10)
+        #include <format>
+    #else
+        #include <cstdio>
+        #include <string>
+    #endif
+#endif
+#endif
+
+
 namespace SPTAG
 {
     namespace SPANN
     {
         extern std::function<std::shared_ptr<Helper::DiskIO>(void)> f_createAsyncIO;
+
+        // Author: Sukjoon Oh (sjoon@kaist.ac.kr)
+        // 
+        #define getElapsedMsIndependent(start, end) \
+            ((std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() * 1.0) / 1000.000)
 
         struct Selection {
             std::string m_tmpfile;
@@ -233,13 +260,25 @@ namespace SPTAG
 
                 COMMON::QueryResultSet<ValueType>& queryResults = *((COMMON::QueryResultSet<ValueType>*)&p_queryResults);
  
+                // Author: Sukjoon Oh (sjoon@kaist.ac.kr), added
+                //  Note: Starts to read posting lists from the disks.
+ 
                 int diskRead = 0;
                 int diskIO = 0;
                 int listElements = 0;
 
+                // Author: Sukjoon Oh (sjoon@kaist.ac.kr), added
+                uintptr_t fileAccessOffset = 0;
+
 #if defined(ASYNC_READ) && !defined(BATCH_READ)
                 int unprocessed = 0;
 #endif
+
+                // Author: Sukjoon Oh (sjoon@kaist.ac.kr), added
+                //  Note: Each latency recorded.
+                // 
+                std::chrono::steady_clock::time_point timeStart;
+                std::chrono::steady_clock::time_point timeEnd;
 
                 for (uint32_t pi = 0; pi < postingListCount; ++pi)
                 {
@@ -257,6 +296,16 @@ namespace SPTAG
 
                     size_t totalBytes = (static_cast<size_t>(listInfo->listPageCount) << PageSizeEx);
                     char* buffer = (char*)((p_exWorkSpace->m_pageBuffers[pi]).GetBuffer());
+
+                    // Author: Sukjoon Oh (sjoon@kaist.ac.kr), added
+                    //  Note: Record raw index
+                    // 
+                    fileAccessOffset = uint64_t(listInfo->listOffset);
+
+#if defined(_TRACK_OFFSET_)
+                    if (p_stats)
+                        p_stats->m_offsetList.push_back(fileAccessOffset);
+#endif
 
 #ifdef ASYNC_READ       
                     auto& request = p_exWorkSpace->m_diskRequests[pi];
@@ -314,7 +363,12 @@ namespace SPTAG
 
 #ifdef ASYNC_READ
 #ifdef BATCH_READ
+                // Author: Sukjoon Oh (sjoon@kaist.ac.kr), added
+                //  Note: Record raw index
+                //
+                timeStart = std::chrono::steady_clock::now();
                 BatchReadFileAsync(m_indexFiles, (p_exWorkSpace->m_diskRequests).data(), postingListCount);
+                timeEnd = std::chrono::steady_clock::now();
 #else
                 while (unprocessed > 0)
                 {
@@ -372,6 +426,12 @@ namespace SPTAG
                     p_stats->m_totalListElementsCount = listElements;
                     p_stats->m_diskIOCount = diskIO;
                     p_stats->m_diskAccessCount = diskRead;
+
+                    // Author: Sukjoon Oh (sjoon@kaist.ac.kr), added
+                    //  Note: More record metrics.
+                    //
+
+                    
                 }
             }
 
@@ -1086,6 +1146,30 @@ namespace SPTAG
                 size_t biglistCount = 0;
                 size_t biglistElementCount = 0;
                 int pageNum;
+
+                // Author: Sukjoon Oh (sjoon@kaist.ac.kr), added
+                //  Note: Extract file layout when loading heading info.
+                //
+                std::string filePath("trace/");
+                std::string traceName("layout-info.csv");
+                
+#include <chrono>
+    #if defined(__GNUC__) && defined(__cplusplus)
+    #if (__GNUC__ >= 10)
+                std::string fileName(std::format("{}{}", filePath, fileName));
+    #else
+                std::string fileName = filePath + traceName;
+    #endif
+#endif
+                std::ofstream fileLayoutInfo(fileName);
+
+                if (!fileLayoutInfo) 
+                {
+                    SPTAGLIB_LOG(Helper::LogLevel::LL_Error, 
+                    "\nFile open for export raw failed: layout-info.csv\n");
+                }
+
+
                 for (int i = 0; i < m_listCount; ++i)
                 {
                     ListInfo* listInfo = &(p_listInfos[totalListCount + i]);
@@ -1123,6 +1207,17 @@ namespace SPTAG
                     totalListElementCount += listInfo->listEleCount;
                     int pageCount = listInfo->listPageCount;
 
+                    // Author: Sukjoon Oh (sjoon@kaist.ac.kr), added
+                    //
+                    if (fileLayoutInfo) 
+                    {
+                        fileLayoutInfo  << listInfo->listOffset << "\t"
+                                        << listInfo->pageOffset << "\t"
+                                        << listInfo->listTotalBytes << "\t"
+                                        << listInfo->listEleCount << "\t"
+                                        << listInfo->listPageCount << "\n";
+                    }
+
                     if (pageCount > 1)
                     {
                         ++biglistCount;
@@ -1138,6 +1233,11 @@ namespace SPTAG
                         pageCountDist[pageCount] += 1;
                     }
                 }
+
+                // Author: Sukjoon Oh (sjoon@kaist.ac.kr), added
+                //
+                if (fileLayoutInfo) 
+                    fileLayoutInfo.close();
 
                 if (m_enableDataCompression && m_enableDictTraining)
                 {

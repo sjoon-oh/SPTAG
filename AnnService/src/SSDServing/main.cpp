@@ -165,6 +165,11 @@ namespace SPTAG {
 			}
 
 			if (searchSSD) {
+
+				// Author: Sukjoon Oh (sjoon@kaist.ac.kr)
+				// Delay for blocks to be flushed.
+				sleep(40);
+
 #define DefineVectorValueType(Name, Type) \
 	if (opts->m_valueType == VectorValueType::Name) { \
         SSDIndex::Search((SPANN::Index<Type>*)(index.get())); \

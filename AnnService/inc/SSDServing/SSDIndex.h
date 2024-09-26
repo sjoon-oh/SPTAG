@@ -333,6 +333,39 @@ namespace SPTAG {
                     },
                     "%4d");
 
+                
+                // Author: Sukjoon Oh (sjoon@kaist.ac.kr), added
+                //  Note: More record metrics.
+                //
+                // Record offset list
+
+                SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nExporting access offset list...\n");
+                {   
+                    std::string filePath("trace/");
+                    std::string traceName("offset-access-trace.csv");
+
+                    std::string fileName = filePath + traceName;
+
+                    std::ofstream fileOffsetAccessTrace(fileName);
+
+                    if (!fileOffsetAccessTrace)
+                        SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nUnable to open the offset-access-trace.csv\n");
+                    
+                    else
+                    {   
+                        // Write start.
+                        for (auto& ss: stats)
+                        {
+                            for (uint64_t offset: ss.m_offsetList)
+                                fileOffsetAccessTrace << offset << "\t";
+                            fileOffsetAccessTrace << std::endl;
+                        }
+                    }
+
+                    fileOffsetAccessTrace.close();
+                }
+
+
                 SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\n");
 
                 if (!outputFile.empty())

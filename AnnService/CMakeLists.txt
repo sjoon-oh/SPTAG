@@ -42,7 +42,7 @@ target_link_libraries (SPTAGLib DistanceUtils libzstd_shared ${NUMA_LIBRARY})
 add_library (SPTAGLibStatic STATIC ${SRC_FILES} ${HDR_FILES})
 target_link_libraries (SPTAGLibStatic DistanceUtils libzstd_static ${NUMA_LIBRARY_STATIC})
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
-    target_compile_options(SPTAGLibStatic PRIVATE -fPIC)
+    target_compile_options(SPTAGLibStatic PRIVATE -g -fPIC)
 endif()
 
 install(TARGETS SPTAGLib SPTAGLibStatic

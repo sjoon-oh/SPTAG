@@ -32,7 +32,16 @@ namespace SPTAG {
                 m_asyncLatency1(0),
                 m_asyncLatency2(0),
                 m_queueLatency(0),
-                m_sleepLatency(0)
+                m_sleepLatency(0),
+
+                // Author: Sukjoon Oh (sjoon@kaist.ac.kr)
+                // 
+                m_readLatency0(0),
+                m_readLatency1(0),
+                m_readLatency2(0),
+                m_readLatency3(0),
+                m_readLatency4(0),
+                m_readLatency5(0)
             {
             }
 
@@ -65,6 +74,22 @@ namespace SPTAG {
             std::chrono::steady_clock::time_point m_searchRequestTime;
 
             int m_threadID;
+
+            // Author: Sukjoon Oh (sjoon@kaist.ac.kr)
+            // 
+            double m_readLatency0;
+            
+            double m_readLatency1;
+            
+            double m_readLatency2;
+            
+            double m_readLatency3;
+            
+            double m_readLatency4;
+            
+            double m_readLatency5;
+
+            std::vector<uint64_t> m_offsetList;
         };
 
         template<typename T>
