@@ -7,8 +7,20 @@ set(Zstd ${PROJECT_SOURCE_DIR}/ThirdParty/zstd)
 include_directories(${AnnService})
 include_directories(${Zstd}/lib)
 
-file(GLOB_RECURSE HDR_FILES ${AnnService}/inc/Core/*.h  ${AnnService}/inc/Helper/*.h)
-file(GLOB_RECURSE SRC_FILES ${AnnService}/src/Core/*.cpp ${AnnService}/src/Helper/*.cpp)
+# Author: Sukjoon Oh (sjoon@kaist.ac.kr)
+# file(GLOB_RECURSE HDR_FILES ${AnnService}/inc/Core/*.h  ${AnnService}/inc/Helper/*.h)
+# file(GLOB_RECURSE SRC_FILES ${AnnService}/src/Core/*.cpp ${AnnService}/src/Helper/*.cpp)
+
+file(GLOB_RECURSE HDR_FILES 
+    ${AnnService}/inc/Core/*.h  
+    ${AnnService}/inc/Helper/*.h
+    ${AnnService}/Extension/*.hh
+    )
+file(GLOB_RECURSE SRC_FILES 
+    ${AnnService}/src/Core/*.cpp 
+    ${AnnService}/src/Helper/*.cpp
+    ${AnnService}/src/Extension/*.cpp
+    )
 
 list(REMOVE_ITEM HDR_FILES
     ${AnnService}/inc/Core/Common/DistanceUtils.h

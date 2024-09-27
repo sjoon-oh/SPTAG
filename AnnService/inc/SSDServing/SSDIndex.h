@@ -12,6 +12,13 @@
 #include "inc/Helper/StringConvert.h"
 #include "inc/SSDServing/Utils.h"
 
+// 
+// Author : Sukjoon Oh (sjoon@kaist.ac.kr), added
+#include "inc/Extension/CacheLru.hh"
+
+extern std::unique_ptr<SPTAG::EXT::CacheLruSPANN> globalCache;
+
+
 namespace SPTAG {
 	namespace SSDServing {
 		namespace SSDIndex {
@@ -131,11 +138,23 @@ namespace SPTAG {
                                     SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "Sent %.2lf%%...\n", index * 100.0 / numQueries);
                                 }
 
+                                // 
+                                // 
+                                // Author : Sukjoon Oh (sjoon@kaist.ac.kr), added
+#pragma region Real Searches
+
                                 double startTime = threadws.getElapsedMs();
                                 p_index->GetMemoryIndex()->SearchIndex(p_results[index]);
                                 double endTime = threadws.getElapsedMs();
                                 p_index->SearchDiskIndex(p_results[index], &(p_stats[index]));
                                 double exEndTime = threadws.getElapsedMs();
+
+                                // 
+                                // Author : Sukjoon Oh (sjoon@kaist.ac.kr), added
+                                globalCache->refreshCache();
+                                globalCache->recordStatTrace();
+
+#pragma endregion Real Searches
 
                                 p_stats[index].m_exLatency = exEndTime - endTime;
                                 p_stats[index].m_totalLatency = p_stats[index].m_totalSearchLatency = exEndTime - startTime;
@@ -365,6 +384,41 @@ namespace SPTAG {
                     fileOffsetAccessTrace.close();
                 }
 
+                SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nExporting cache trace...\n");
+                {
+                    std::string filePath("trace/");
+                    std::string traceName("cache-trace.csv");
+
+                    std::string fileName = filePath + traceName;
+
+                    std::ofstream fileCacheTrace(fileName);
+
+                    if (!fileCacheTrace)
+                        SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nUnable to open the cache-trace.csv\n");
+                    
+                    else
+                    {   
+                        // Write start.
+                        for (EXT::CacheStats& stat: globalCache->getCacheStatTrace())
+                        {
+                            uint64_t hitCount = stat.getHitCount();
+                            uint64_t missCount = stat.getMissCount();
+                            uint64_t evictCount = stat.getEvictCount();
+                            uint64_t currentSize = stat.getCurrentSize();
+                            
+                            fileCacheTrace  << hitCount << "\t"
+                                            << missCount << "\t"
+                                            << evictCount << "\t"
+                                            << currentSize << "\t"
+                                            << static_cast<double>(hitCount) / (hitCount + missCount) << "\n";
+
+                        }
+
+                        fileCacheTrace << std::endl;
+                    }
+
+                    fileCacheTrace.close();
+                }
 
                 SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\n");
 

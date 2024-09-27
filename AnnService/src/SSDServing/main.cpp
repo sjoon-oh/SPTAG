@@ -17,6 +17,12 @@
  
 using namespace SPTAG;
 
+// Author: Sukjoon Oh (sjoon@kaist.ac.kr)
+// 
+// 
+#include "inc/Extension/CacheLru.hh"
+extern std::unique_ptr<SPTAG::EXT::CacheLruSPANN> globalCache;
+
 namespace SPTAG {
 	namespace SSDServing {
 
@@ -168,7 +174,15 @@ namespace SPTAG {
 
 				// Author: Sukjoon Oh (sjoon@kaist.ac.kr)
 				// Delay for blocks to be flushed.
-				sleep(40);
+				
+				// const size_t globalCacheSize = 4294967296; // 4GB
+				// const size_t globalCacheSize = 2147483648; // 2GB, 231182336 (231MB)
+				// const size_t globalCacheSize = 1073741824; // 1GB
+				const size_t globalCacheSize = 536870912; // 512MB
+				// const size_t globalCacheSize = 134217728; // 128MB
+				globalCache.reset(new EXT::CacheLruSPANN(globalCacheSize));
+
+				// sleep(40);
 
 #define DefineVectorValueType(Name, Type) \
 	if (opts->m_valueType == VectorValueType::Name) { \

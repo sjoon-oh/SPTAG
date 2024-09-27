@@ -3,6 +3,17 @@
 
 #include "inc/Helper/AsyncFileReader.h"
 
+// Author: Sukjoon Oh (sjoon@kaist.ac.kr), added
+#include <cassert>
+#include <memory>
+#include <utility>
+#include <iostream>
+
+#include "inc/Extension/CacheLru.hh"
+
+
+std::unique_ptr<SPTAG::EXT::CacheLruSPANN> globalCache;
+
 namespace SPTAG {
     namespace Helper {
 #ifndef _MSC_VER
@@ -58,9 +69,51 @@ namespace SPTAG {
             std::vector<int> done(handlers.size(), 0);
             int totalToSubmit = 0, channel = 0;
 
+#define _CACHE_ENABLED_
+#if defined (_CACHE_ENABLED_)
+            
+            // Author: Sukjoon Oh (sjoon@kaist.ac.kr), added
+            // bool* requestToCache;
+            // requestToCache = new bool[handlers.size()];
+            // std::memset(requestToCache, true, sizeof(bool) * handlers.size());
+
+            // assert(requestToCache != nullptr);
+            std::vector<bool> requestToCache(num, true);
+#endif
+
             memset(myiocbs.data(), 0, num * sizeof(struct iocb));
             for (int i = 0; i < num; i++) {
                 AsyncReadRequest* readRequest = &(readRequests[i]);
+
+#if defined (_CACHE_ENABLED_)
+
+                struct ListInfo
+                {
+                    std::size_t listTotalBytes = 0;
+                    int listEleCount = 0;
+                    std::uint16_t listPageCount = 0;
+                    std::uint64_t listOffset = 0;
+                    std::uint16_t pageOffset = 0;
+                };
+
+                // Author: Sukjoon Oh (sjoon@kaist.ac.kr), added
+                //  Note: Check the cache first.
+                ListInfo* listInfo = (ListInfo*)(readRequest->m_payload);
+                uintptr_t key = static_cast<uintptr_t>(readRequest->m_offset) + listInfo->pageOffset;
+                
+                EXT::CacheItem<uintptr_t>* fetchedItem = 
+                    globalCache->getCachedItem(key); 
+                    // Key is the offset.
+
+                if (fetchedItem != nullptr)
+                {
+                    requestToCache[i] = false;   // Skip if fetched.
+                    std::memcpy(
+                        reinterpret_cast<uint8_t*>(readRequest->m_buffer), fetchedItem->getItem(), readRequest->m_readSize);
+
+                    continue;
+                }
+#endif
 
                 channel = readRequest->m_status & 0xffff;
                 int fileid = (readRequest->m_status >> 16);
@@ -121,6 +174,31 @@ namespace SPTAG {
                     req->m_callback(true);
                 }
             }
+
+            // Author: Sukjoon Oh (sjoon@kaist.ac.kr), added
+            //  Note: 
+            // 
+
+#if defined (_CACHE_ENABLED_)            
+            for (int i = 0; i < num; i++)
+            {
+                if (requestToCache[i] == false)
+                {
+                    readRequests[i].m_callback(true);
+                }
+            }
+
+            globalCache->setDelayedToCache(num, std::move(requestToCache), readRequests);
+
+            // auto cacheStat = globalCache->getCacheStat();
+            // SPTAGLIB_LOG(Helper::LogLevel::LL_Info, 
+            //     "Cache Status - Hit:%ld, Miss: %ld, Evict: %ld, Size: %ld\n", 
+            //     cacheStat.getHitCount(), cacheStat.getMissCount(), cacheStat.getEvictCount(), cacheStat.getCurrentSize());
+
+            // globalCache->recordStatTrace();
+
+#endif
+
         }
 #else
         ULONGLONG GetCpuMasks(WORD group, DWORD numCpus)
