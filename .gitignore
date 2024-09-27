@@ -467,3 +467,5 @@ FodyWeavers.xsd
 build/
 datasets/
 Release/
+tempfolder/
+trace/
