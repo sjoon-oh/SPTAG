@@ -175,11 +175,28 @@ namespace SPTAG {
 				// Author: Sukjoon Oh (sjoon@kaist.ac.kr)
 				// Delay for blocks to be flushed.
 				
+				// SPACEV1B MAX : 65766146048
+				// const size_t globalCacheSize = 68719476736;	// 64GB
+				const size_t globalCacheSize = 65498251264; // 60.5GB
+				// const size_t globalCacheSize = 64424509440; // 60GB
+				// const size_t globalCacheSize = 60129542144; // 56GB
+				// const size_t globalCacheSize = 55834574848; // 52GB
+
+				// const size_t globalCacheSize = 51539607552; // 48GB
+				// const size_t globalCacheSize = 34359738368;	// 32GB
+				// const size_t globalCacheSize = 17179869184; // 16GB
+				// const size_t globalCacheSize = 8589934592; // 8GB
 				// const size_t globalCacheSize = 4294967296; // 4GB
-				// const size_t globalCacheSize = 2147483648; // 2GB, 231182336 (231MB)
+				// const size_t globalCacheSize = 3221225472; // 3GB
+				// const size_t globalCacheSize = 2147483648; // 2GB
 				// const size_t globalCacheSize = 1073741824; // 1GB
-				const size_t globalCacheSize = 536870912; // 512MB
+				
+				// const size_t globalCacheSize = 536870912; // 512MB
+				// const size_t globalCacheSize = 268435456; // 256MB
 				// const size_t globalCacheSize = 134217728; // 128MB
+				// const size_t globalCacheSize = 67108864; // 64MB
+				// const size_t globalCacheSize = 33554432; // 32MB
+
 				globalCache.reset(new EXT::CacheLruSPANN(globalCacheSize));
 
 				// sleep(40);

@@ -151,7 +151,18 @@ namespace SPTAG {
 
                                 // 
                                 // Author : Sukjoon Oh (sjoon@kaist.ac.kr), added
-                                globalCache->refreshCache();
+                                #define getElapsedMsIndependent(start, end) \
+                                    ((std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() * 1.0) / 1000.000)
+
+                                std::chrono::steady_clock::time_point timeStart;
+                                std::chrono::steady_clock::time_point timeEnd;
+
+                                timeStart = std::chrono::steady_clock::now();
+                                // globalCache->refreshCache();
+                                globalCache->refreshCacheBulk();
+                                timeEnd = std::chrono::steady_clock::now();
+
+                                globalCache->recordLatencySet(getElapsedMsIndependent(timeStart, timeEnd));
                                 globalCache->recordStatTrace();
 
 #pragma endregion Real Searches
@@ -226,6 +237,10 @@ namespace SPTAG {
                     SearchSequential(p_index, numThreads, warmupResults, warmpUpStats, p_opts.m_queryCountLimit, internalResultNum);
                     SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nFinish warmup...\n");
                 }
+
+                // 
+                // Author : Sukjoon Oh (sjoon@kaist.ac.kr), added
+                globalCache->resetStat();
 
                 SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "Start loading QuerySet...\n");
                 std::shared_ptr<Helper::ReaderOptions> queryOptions(new Helper::ReaderOptions(p_opts.m_valueType, p_opts.m_dim, p_opts.m_queryType, p_opts.m_queryDelimiter));
@@ -398,6 +413,9 @@ namespace SPTAG {
                     
                     else
                     {   
+                        uint64_t index = 0;
+                        std::vector<double>& deltaHitRatio = globalCache->getDeltaHitRatioTrace();
+
                         // Write start.
                         for (EXT::CacheStats& stat: globalCache->getCacheStatTrace())
                         {
@@ -410,7 +428,10 @@ namespace SPTAG {
                                             << missCount << "\t"
                                             << evictCount << "\t"
                                             << currentSize << "\t"
-                                            << static_cast<double>(hitCount) / (hitCount + missCount) << "\n";
+                                            << static_cast<double>(hitCount) / (hitCount + missCount) << "\t"
+                                            << static_cast<double>(deltaHitRatio[index]) << "\n";
+
+                            index += 1;
 
                         }
 
@@ -418,6 +439,47 @@ namespace SPTAG {
                     }
 
                     fileCacheTrace.close();
+
+                    // Get latency
+                    filePath = "trace/";
+                    traceName = "cache-get-latency.csv";
+
+                    fileName = filePath + traceName;
+                    std::ofstream fileCacheLatencyGet(fileName);
+
+                    if (!fileCacheLatencyGet)
+                        SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nUnable to open the cache-get-latency.csv\n");
+
+                    else
+                    {
+                        for (auto latency: globalCache->getLatencyGet())
+                        {
+                            fileCacheLatencyGet << latency << "\n";
+                        }
+                    }
+
+                    fileCacheLatencyGet.close();
+
+                    // Set latency
+                    filePath = "trace/";
+                    traceName = "cache-set-latency.csv";
+
+                    fileName = filePath + traceName;
+                    std::ofstream fileCacheLatencySet(fileName);
+
+                    if (!fileCacheLatencySet)
+                        SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nUnable to open the cache-set-latency.csv\n");
+
+                    else
+                    {
+                        for (auto latency: globalCache->getLatencySet())
+                        {
+                            fileCacheLatencySet << latency << "\n";
+                        }
+                    }
+
+                    fileCacheLatencySet.close();
+
                 }
 
                 SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\n");

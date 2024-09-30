@@ -79,6 +79,12 @@ namespace SPTAG {
 
             // assert(requestToCache != nullptr);
             std::vector<bool> requestToCache(num, true);
+
+            std::chrono::steady_clock::time_point timeStart;
+            std::chrono::steady_clock::time_point timeEnd;
+
+            #define getElapsedMsIndependent(start, end) \
+                ((std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() * 1.0) / 1000.000)
 #endif
 
             memset(myiocbs.data(), 0, num * sizeof(struct iocb));
@@ -95,6 +101,8 @@ namespace SPTAG {
                     std::uint64_t listOffset = 0;
                     std::uint16_t pageOffset = 0;
                 };
+
+                timeStart = std::chrono::steady_clock::now();
 
                 // Author: Sukjoon Oh (sjoon@kaist.ac.kr), added
                 //  Note: Check the cache first.
@@ -113,6 +121,9 @@ namespace SPTAG {
 
                     continue;
                 }
+
+                timeEnd = std::chrono::steady_clock::now();
+                globalCache->recordLatencyGet(getElapsedMsIndependent(timeStart, timeEnd));
 #endif
 
                 channel = readRequest->m_status & 0xffff;

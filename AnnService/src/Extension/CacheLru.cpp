@@ -15,7 +15,7 @@ using namespace SPTAG::EXT;
 
 
 CacheStats::CacheStats()
-    : m_hitCount(0), m_missCount(0), m_evictCount(0)
+    : m_hitCount(0), m_missCount(0), m_evictCount(0), m_currentSize(0)
 {
 
 }
@@ -80,6 +80,15 @@ void
 CacheStats::setCurrentSize(uint64_t p_val)
 {
     m_currentSize = p_val;
+}
+
+
+void
+CacheStats::resetAll()
+{
+    m_hitCount = 0;
+    m_missCount = 0;
+    m_evictCount = 0;
 }
 
 
@@ -148,6 +157,58 @@ CacheLruSPANN::refreshCache()
                     key, 
                     reinterpret_cast<uint8_t*>(requests[i].m_buffer),
                     requests[i].m_readSize);
+            }
+        }
+    }
+    
+    m_delayPending = false;
+}
+
+
+void 
+CacheLruSPANN::refreshCacheBulk()
+{
+    if (m_delayPending == true)
+    {   
+        size_t totalSize = 0;
+        SPTAG::Helper::AsyncReadRequest* requests = (SPTAG::Helper::AsyncReadRequest*)m_requests;
+
+        for (int i = 0; i < m_delayedNumToCache; i++)
+        {
+            if ((*m_delayedToCache)[i] == false)
+                ;
+            else
+            {   
+                ListInfo* listInfo = (ListInfo*)(requests[i].m_payload);
+                totalSize += requests[i].m_readSize;
+            }
+        }
+
+        while (m_currentSize + totalSize > m_cacheCapacity)
+        {
+            CacheItem<uintptr_t>* lruItem = &(m_usageList.back());
+            
+            m_currentSize -= lruItem->getSize(); // Reduce current size by the evicted item's size
+            m_cachedItems.erase(lruItem->getKey());
+            m_usageList.pop_back();
+            m_stats.incrEvictCount(1);
+        }
+
+        for (int i = 0; i < m_delayedNumToCache; i++)
+        {
+            if ((*m_delayedToCache)[i] == false)
+                ;
+            else
+            {   
+                ListInfo* listInfo = (ListInfo*)(requests[i].m_payload);
+                uintptr_t key = static_cast<uintptr_t>(requests[i].m_offset) + listInfo->pageOffset;
+                
+                m_usageList.emplace_front(key, reinterpret_cast<uint8_t*>(requests[i].m_buffer), requests[i].m_readSize);
+
+                m_cachedItems[key] = m_usageList.begin();
+                m_currentSize += requests[i].m_readSize; // Update the current size
+
+                m_stats.setCurrentSize(m_currentSize);
             }
         }
     }

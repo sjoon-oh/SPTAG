@@ -48,6 +48,8 @@ namespace SPTAG {
             void incrEvictCount(uint64_t);
 
             void setCurrentSize(uint64_t);
+
+            void resetAll();
         };
 
         // 
@@ -83,6 +85,10 @@ namespace SPTAG {
             size_t m_currentSize;
 
             std::vector<CacheStats> m_statTrace;
+            std::vector<double> m_deltaHitRatioTrace;
+            
+            std::vector<double> m_latencyGet;
+            std::vector<double> m_latencySet;
 
             std::unordered_map<K, typename std::list<CacheItem<K>>::iterator> m_cachedItems;
             std::list<CacheItem<K>> m_usageList;    // For tracking LRU order
@@ -102,6 +108,19 @@ namespace SPTAG {
             std::vector<CacheStats>& getCacheStatTrace();
 
             void recordStatTrace();
+            void resetStat();
+            void resetStatTrace();
+
+            void recordLatencyGet(double);
+            void recordLatencySet(double);
+
+            void resetLatencyGet();
+            void resetLatencySet();
+
+            std::vector<double>& getLatencyGet();
+            std::vector<double>& getLatencySet();
+
+            std::vector<double>& getDeltaHitRatioTrace();
         };
 
 
@@ -122,6 +141,7 @@ namespace SPTAG {
             void setDelayedToCache(size_t, std::vector<bool>, void*);
             
             void refreshCache();
+            void refreshCacheBulk();
         };
     }
 }
@@ -183,6 +203,7 @@ SPTAG::EXT::CacheLru<K>::CacheLru(const size_t p_capacity)
     : m_cacheCapacity(p_capacity), m_currentSize(0)
 {
     m_stats.setCurrentSize(m_currentSize);
+    m_deltaHitRatioTrace.push_back(0);
 }
 
 
@@ -277,10 +298,92 @@ template <class K>
 void
 SPTAG::EXT::CacheLru<K>::recordStatTrace()
 {
+    if (m_statTrace.size() != 0)
+    {
+        CacheStats& prevStat = m_statTrace.back();
+        
+        double deltaHits = static_cast<double>(m_stats.getHitCount()) - prevStat.getHitCount();
+        double deltaMisses = static_cast<double>(m_stats.getMissCount()) - prevStat.getMissCount();
+
+        double deltaHitRatio = deltaHits / (deltaHits + deltaMisses);
+
+        m_deltaHitRatioTrace.push_back(deltaHitRatio);
+    }
+    
     m_statTrace.push_back(this->m_stats);
 }
 
 
+template <class K>
+void
+SPTAG::EXT::CacheLru<K>::resetStat()
+{
+    m_stats.resetAll();
+}
+
+
+template <class K>
+void
+SPTAG::EXT::CacheLru<K>::resetStatTrace()
+{
+    m_statTrace.clear();
+}
+
+
+template <class K>
+void
+SPTAG::EXT::CacheLru<K>::recordLatencyGet(double p_record)
+{
+    m_latencyGet.push_back(p_record);
+}
+
+
+template <class K>
+void
+SPTAG::EXT::CacheLru<K>::recordLatencySet(double p_record)
+{
+    m_latencySet.push_back(p_record);
+}
+
+
+template <class K>
+void
+SPTAG::EXT::CacheLru<K>::resetLatencyGet()
+{
+    m_latencyGet.clear();
+}
+
+
+template <class K>
+void
+SPTAG::EXT::CacheLru<K>::resetLatencySet()
+{
+    m_latencySet.clear();
+}
+
+
+template <class K>
+std::vector<double>&
+SPTAG::EXT::CacheLru<K>::getLatencyGet()
+{
+    return m_latencyGet;
+}
+
+
+template <class K>
+std::vector<double>&
+SPTAG::EXT::CacheLru<K>::getLatencySet()
+{
+    return m_latencySet;
+}
+
+
+template <class K>
+std::vector<double>&
+SPTAG::EXT::CacheLru<K>::getDeltaHitRatioTrace()
+{
+    return m_deltaHitRatioTrace;
+}
 
 #endif
 
