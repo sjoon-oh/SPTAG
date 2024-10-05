@@ -2,8 +2,8 @@
 // Author: Sukjoon Oh (sjoon@kaist.ac.kr)
 // 
 
-#ifndef _SPTAG_EXTENSION_H
-#define _SPTAG_EXTENSION_H
+#ifndef _SPTAG_EXT_CACHE_LRUWEAK_H
+#define _SPTAG_EXT_CACHE_LRUWEAK_H
 
 #include <chrono>
 #include <cstdint>
@@ -19,13 +19,15 @@
 
 #include <iostream>
 
+// #include "inc/Extension/Locks.hh"
+
 
 namespace SPTAG {
     namespace EXT {
         
         // 
         // Statistics
-        class CacheStats
+        class CacheStatWeak
         {
         protected:
             uint64_t m_hitCount;
@@ -34,23 +36,28 @@ namespace SPTAG {
 
             size_t m_currentSize;
 
+            double m_localHitRatio;
+
         public:
-            CacheStats();
-            virtual ~CacheStats();
+            CacheStatWeak() noexcept;
+            CacheStatWeak(uint64_t, uint64_t, uint64_t, uint64_t, double) noexcept;
+            virtual ~CacheStatWeak() noexcept;
 
-            uint64_t getHitCount() const;
-            uint64_t getMissCount() const;
-            uint64_t getEvictCount() const;
-            uint64_t getCurrentSize() const;
+            uint64_t getHitCount() const noexcept;
+            uint64_t getMissCount() const noexcept;
+            uint64_t getEvictCount() const noexcept;
+            uint64_t getCurrentSize() const noexcept;
+            double getLocalHitRatio() const noexcept;
 
-            void incrHitCount(uint64_t);
-            void incrMissCount(uint64_t);
-            void incrEvictCount(uint64_t);
+            void incrHitCount(uint64_t) noexcept;
+            void incrMissCount(uint64_t) noexcept;
+            void incrEvictCount(uint64_t) noexcept;
 
-            void setCurrentSize(uint64_t);
+            void setCurrentSize(uint64_t) noexcept;
 
-            void resetAll();
+            void resetAll() noexcept;
         };
+
 
         // 
         // 
@@ -63,14 +70,14 @@ namespace SPTAG {
             size_t m_size;
 
         public:
-            CacheItem(K, uint8_t*, size_t);
+            CacheItem(K, uint8_t*, size_t) noexcept;
             CacheItem(CacheItem&&) noexcept;
-            virtual ~CacheItem();
+            virtual ~CacheItem() noexcept;
 
-            uint8_t* getItem();
+            uint8_t* getItem() noexcept;
 
-            K getKey() const;
-            const size_t getSize() const;
+            K getKey() const noexcept;
+            const size_t getSize() const noexcept;
         };
 
         
@@ -80,11 +87,11 @@ namespace SPTAG {
         class CacheLru
         {
         protected:
-            CacheStats m_stats;
+            CacheStatWeak m_stats;
             const size_t m_cacheCapacity;
             size_t m_currentSize;
 
-            std::vector<CacheStats> m_statTrace;
+            std::vector<CacheStatWeak> m_statTrace;
             std::vector<double> m_deltaHitRatioTrace;
             
             std::vector<double> m_latencyGet;
@@ -97,59 +104,59 @@ namespace SPTAG {
             
 #endif
         public:
-            CacheLru(const size_t);
-            virtual ~CacheLru();
+            CacheLru(const size_t) noexcept;
+            virtual ~CacheLru() noexcept;
             
-            bool setItemCached(K, uint8_t*, size_t);
-            CacheItem<K>* getCachedItem(K);
-            inline const bool isItemCached(K);
+            bool setItemCached(K, uint8_t*, size_t) noexcept;
+            CacheItem<K>* getCachedItem(K) noexcept;
+            inline const bool isItemCached(K) noexcept;
 
-            CacheStats getCacheStat() const;
-            std::vector<CacheStats>& getCacheStatTrace();
+            CacheStatWeak getCacheStat() const noexcept;
+            std::vector<CacheStatWeak>& getCacheStatTrace() noexcept;
 
-            void recordStatTrace();
-            void resetStat();
-            void resetStatTrace();
+            void recordStatTrace() noexcept;
+            void resetStat() noexcept;
+            void resetStatTrace() noexcept;
 
-            void recordLatencyGet(double);
-            void recordLatencySet(double);
+            void recordLatencyGet(double) noexcept;
+            void recordLatencySet(double) noexcept;
 
-            void resetLatencyGet();
-            void resetLatencySet();
+            void resetLatencyGet() noexcept;
+            void resetLatencySet() noexcept;
 
-            std::vector<double>& getLatencyGet();
-            std::vector<double>& getLatencySet();
+            std::vector<double>& getLatencyGet() noexcept;
+            std::vector<double>& getLatencySet() noexcept;
 
-            std::vector<double>& getDeltaHitRatioTrace();
+            std::vector<double>& getDeltaHitRatioTrace() noexcept;
         };
 
 
-        class CacheLruSPANN : public CacheLru<uintptr_t>
+        class CacheLruSpannSt : public CacheLru<uintptr_t>
         {
-        private:
+        protected:
             bool m_delayPending;
             size_t m_delayedNumToCache;
             std::unique_ptr<std::vector<bool>> m_delayedToCache;
 
-            void* m_requests;
-            
+            void* m_requests;          
             
         public:
-            CacheLruSPANN(const size_t);
-            virtual ~CacheLruSPANN();
+            CacheLruSpannSt(const size_t) noexcept;
+            virtual ~CacheLruSpannSt() noexcept;
 
-            void setDelayedToCache(size_t, std::vector<bool>, void*);
+            void setDelayedToCache(size_t, std::vector<bool>, void*) noexcept;
             
-            void refreshCache();
-            void refreshCacheBulk();
+            void refreshCache() noexcept;
+            void refreshCacheBulk() noexcept;
         };
+
     }
 }
 
 
 // Cache Item
 template <class K>
-SPTAG::EXT::CacheItem<K>::CacheItem(K p_key, uint8_t* p_object, size_t p_size)
+SPTAG::EXT::CacheItem<K>::CacheItem(K p_key, uint8_t* p_object, size_t p_size) noexcept
     : m_size(p_size), m_key(p_key)
 {
     m_buffer = new uint8_t[m_size];
@@ -166,7 +173,7 @@ SPTAG::EXT::CacheItem<K>::CacheItem(SPTAG::EXT::CacheItem<K>&& p_other) noexcept
 
 
 template <class K>
-SPTAG::EXT::CacheItem<K>::~CacheItem()
+SPTAG::EXT::CacheItem<K>::~CacheItem() noexcept
 {
     if (m_buffer != nullptr)
         delete[] m_buffer;
@@ -175,7 +182,7 @@ SPTAG::EXT::CacheItem<K>::~CacheItem()
 
 template <class K>
 uint8_t*
-SPTAG::EXT::CacheItem<K>::getItem()
+SPTAG::EXT::CacheItem<K>::getItem() noexcept
 {
     return m_buffer;
 }
@@ -183,7 +190,7 @@ SPTAG::EXT::CacheItem<K>::getItem()
 
 template <class K>
 K
-SPTAG::EXT::CacheItem<K>::getKey() const
+SPTAG::EXT::CacheItem<K>::getKey() const noexcept
 {
     return m_key;
 }
@@ -192,14 +199,14 @@ SPTAG::EXT::CacheItem<K>::getKey() const
 // const size_t getSize() const;
 template <class K>
 const size_t
-SPTAG::EXT::CacheItem<K>::getSize() const
+SPTAG::EXT::CacheItem<K>::getSize() const noexcept
 {
     return m_size;
 }
 
 
 template <class K>
-SPTAG::EXT::CacheLru<K>::CacheLru(const size_t p_capacity) 
+SPTAG::EXT::CacheLru<K>::CacheLru(const size_t p_capacity) noexcept
     : m_cacheCapacity(p_capacity), m_currentSize(0)
 {
     m_stats.setCurrentSize(m_currentSize);
@@ -208,7 +215,7 @@ SPTAG::EXT::CacheLru<K>::CacheLru(const size_t p_capacity)
 
 
 template <class K>
-SPTAG::EXT::CacheLru<K>::~CacheLru()
+SPTAG::EXT::CacheLru<K>::~CacheLru() noexcept
 {
 
 }
@@ -216,7 +223,7 @@ SPTAG::EXT::CacheLru<K>::~CacheLru()
 
 template <class K>
 bool
-SPTAG::EXT::CacheLru<K>::setItemCached(K p_key, uint8_t* p_object, size_t p_size)
+SPTAG::EXT::CacheLru<K>::setItemCached(K p_key, uint8_t* p_object, size_t p_size) noexcept
 {
     if (isItemCached(p_key))
     {
@@ -248,7 +255,7 @@ SPTAG::EXT::CacheLru<K>::setItemCached(K p_key, uint8_t* p_object, size_t p_size
 
 template <class K>
 SPTAG::EXT::CacheItem<K>* 
-SPTAG::EXT::CacheLru<K>::getCachedItem(K p_key)
+SPTAG::EXT::CacheLru<K>::getCachedItem(K p_key) noexcept
 {
     if (!isItemCached(p_key))
     {
@@ -272,23 +279,23 @@ SPTAG::EXT::CacheLru<K>::getCachedItem(K p_key)
 
 template <class K>
 const bool
-SPTAG::EXT::CacheLru<K>::isItemCached(K p_key)
+SPTAG::EXT::CacheLru<K>::isItemCached(K p_key) noexcept
 {
     return (m_cachedItems.find(p_key) != m_cachedItems.end());
 }
 
 
 template <class K>
-SPTAG::EXT::CacheStats
-SPTAG::EXT::CacheLru<K>::getCacheStat() const
+SPTAG::EXT::CacheStatWeak
+SPTAG::EXT::CacheLru<K>::getCacheStat() const noexcept
 {
     return m_stats;
 }
 
 
 template <class K>
-std::vector<SPTAG::EXT::CacheStats>&
-SPTAG::EXT::CacheLru<K>::getCacheStatTrace()
+std::vector<SPTAG::EXT::CacheStatWeak>&
+SPTAG::EXT::CacheLru<K>::getCacheStatTrace() noexcept
 {
     return m_statTrace;
 }
@@ -296,11 +303,11 @@ SPTAG::EXT::CacheLru<K>::getCacheStatTrace()
 
 template <class K>
 void
-SPTAG::EXT::CacheLru<K>::recordStatTrace()
+SPTAG::EXT::CacheLru<K>::recordStatTrace() noexcept
 {
     if (m_statTrace.size() != 0)
     {
-        CacheStats& prevStat = m_statTrace.back();
+        CacheStatWeak& prevStat = m_statTrace.back();
         
         double deltaHits = static_cast<double>(m_stats.getHitCount()) - prevStat.getHitCount();
         double deltaMisses = static_cast<double>(m_stats.getMissCount()) - prevStat.getMissCount();
@@ -316,7 +323,7 @@ SPTAG::EXT::CacheLru<K>::recordStatTrace()
 
 template <class K>
 void
-SPTAG::EXT::CacheLru<K>::resetStat()
+SPTAG::EXT::CacheLru<K>::resetStat() noexcept
 {
     m_stats.resetAll();
 }
@@ -324,7 +331,7 @@ SPTAG::EXT::CacheLru<K>::resetStat()
 
 template <class K>
 void
-SPTAG::EXT::CacheLru<K>::resetStatTrace()
+SPTAG::EXT::CacheLru<K>::resetStatTrace() noexcept
 {
     m_statTrace.clear();
 }
@@ -332,7 +339,7 @@ SPTAG::EXT::CacheLru<K>::resetStatTrace()
 
 template <class K>
 void
-SPTAG::EXT::CacheLru<K>::recordLatencyGet(double p_record)
+SPTAG::EXT::CacheLru<K>::recordLatencyGet(double p_record) noexcept
 {
     m_latencyGet.push_back(p_record);
 }
@@ -340,7 +347,7 @@ SPTAG::EXT::CacheLru<K>::recordLatencyGet(double p_record)
 
 template <class K>
 void
-SPTAG::EXT::CacheLru<K>::recordLatencySet(double p_record)
+SPTAG::EXT::CacheLru<K>::recordLatencySet(double p_record) noexcept
 {
     m_latencySet.push_back(p_record);
 }
@@ -348,7 +355,7 @@ SPTAG::EXT::CacheLru<K>::recordLatencySet(double p_record)
 
 template <class K>
 void
-SPTAG::EXT::CacheLru<K>::resetLatencyGet()
+SPTAG::EXT::CacheLru<K>::resetLatencyGet() noexcept
 {
     m_latencyGet.clear();
 }
@@ -356,7 +363,7 @@ SPTAG::EXT::CacheLru<K>::resetLatencyGet()
 
 template <class K>
 void
-SPTAG::EXT::CacheLru<K>::resetLatencySet()
+SPTAG::EXT::CacheLru<K>::resetLatencySet() noexcept
 {
     m_latencySet.clear();
 }
@@ -364,7 +371,7 @@ SPTAG::EXT::CacheLru<K>::resetLatencySet()
 
 template <class K>
 std::vector<double>&
-SPTAG::EXT::CacheLru<K>::getLatencyGet()
+SPTAG::EXT::CacheLru<K>::getLatencyGet() noexcept
 {
     return m_latencyGet;
 }
@@ -372,7 +379,7 @@ SPTAG::EXT::CacheLru<K>::getLatencyGet()
 
 template <class K>
 std::vector<double>&
-SPTAG::EXT::CacheLru<K>::getLatencySet()
+SPTAG::EXT::CacheLru<K>::getLatencySet() noexcept
 {
     return m_latencySet;
 }
@@ -380,7 +387,7 @@ SPTAG::EXT::CacheLru<K>::getLatencySet()
 
 template <class K>
 std::vector<double>&
-SPTAG::EXT::CacheLru<K>::getDeltaHitRatioTrace()
+SPTAG::EXT::CacheLru<K>::getDeltaHitRatioTrace() noexcept
 {
     return m_deltaHitRatioTrace;
 }

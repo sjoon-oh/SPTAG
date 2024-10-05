@@ -14,9 +14,11 @@
 
 // 
 // Author : Sukjoon Oh (sjoon@kaist.ac.kr), added
-#include "inc/Extension/CacheLru.hh"
+#include "inc/Extension/CacheLruWeak.hh"
+#include "inc/Extension/CacheLruMt.hh"
 
-extern std::unique_ptr<SPTAG::EXT::CacheLruSPANN> globalCache;
+
+extern std::unique_ptr<SPTAG::EXT::CacheLruSpannMt> globalCache;
 
 
 namespace SPTAG {
@@ -126,6 +128,11 @@ namespace SPTAG {
                         NumaStrategy ns = (p_index->GetDiskIndex() != nullptr) ? NumaStrategy::SCATTER : NumaStrategy::LOCAL; // Only for SPANN, we need to avoid IO threads overlap with search threads.
                         Helper::SetThreadAffinity(i, threads[i], ns, OrderStrategy::ASC); 
 
+                        // 
+                        // Author : Sukjoon Oh (sjoon@kaist.ac.kr), added
+                        //  Note : 
+                        int threadId = i;
+
                         Utils::StopW threadws;
                         size_t index = 0;
                         while (true)
@@ -146,7 +153,7 @@ namespace SPTAG {
                                 double startTime = threadws.getElapsedMs();
                                 p_index->GetMemoryIndex()->SearchIndex(p_results[index]);
                                 double endTime = threadws.getElapsedMs();
-                                p_index->SearchDiskIndex(p_results[index], &(p_stats[index]));
+                                p_index->SearchDiskIndex(p_results[index], &(p_stats[index]), threadId);
                                 double exEndTime = threadws.getElapsedMs();
 
                                 // 
@@ -158,11 +165,12 @@ namespace SPTAG {
                                 std::chrono::steady_clock::time_point timeEnd;
 
                                 timeStart = std::chrono::steady_clock::now();
-                                // globalCache->refreshCache();
-                                globalCache->refreshCacheBulk();
+                                
+                                globalCache->refreshCacheBulkSingle(i);
+
                                 timeEnd = std::chrono::steady_clock::now();
 
-                                globalCache->recordLatencySet(getElapsedMsIndependent(timeStart, timeEnd));
+                                // globalCache->recordLatencySet(getElapsedMsIndependent(timeStart, timeEnd));
                                 globalCache->recordStatTrace();
 
 #pragma endregion Real Searches
@@ -394,9 +402,9 @@ namespace SPTAG {
                                 fileOffsetAccessTrace << offset << "\t";
                             fileOffsetAccessTrace << std::endl;
                         }
-                    }
 
-                    fileOffsetAccessTrace.close();
+                        fileOffsetAccessTrace.close();
+                    }
                 }
 
                 SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nExporting cache trace...\n");
@@ -413,11 +421,8 @@ namespace SPTAG {
                     
                     else
                     {   
-                        uint64_t index = 0;
-                        std::vector<double>& deltaHitRatio = globalCache->getDeltaHitRatioTrace();
-
                         // Write start.
-                        for (EXT::CacheStats& stat: globalCache->getCacheStatTrace())
+                        for (EXT::CacheStatWeak& stat: globalCache->getCacheStatTrace())
                         {
                             uint64_t hitCount = stat.getHitCount();
                             uint64_t missCount = stat.getMissCount();
@@ -428,57 +433,74 @@ namespace SPTAG {
                                             << missCount << "\t"
                                             << evictCount << "\t"
                                             << currentSize << "\t"
-                                            << static_cast<double>(hitCount) / (hitCount + missCount) << "\t"
-                                            << static_cast<double>(deltaHitRatio[index]) << "\n";
-
-                            index += 1;
-
+                                            << static_cast<double>(hitCount) / (hitCount + missCount) << "\n";
                         }
 
                         fileCacheTrace << std::endl;
+                        fileCacheTrace.close();
                     }
 
-                    fileCacheTrace.close();
+                    
 
                     // Get latency
                     filePath = "trace/";
-                    traceName = "cache-get-latency.csv";
+                    traceName = "cache-lock-latency.csv";
 
                     fileName = filePath + traceName;
-                    std::ofstream fileCacheLatencyGet(fileName);
+                    std::ofstream fileCacheLockLatency(fileName);
 
-                    if (!fileCacheLatencyGet)
-                        SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nUnable to open the cache-get-latency.csv\n");
+                    if (!fileCacheLockLatency)
+                        SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nUnable to open the cache-lock-latency.csv\n");
 
                     else
                     {
-                        for (auto latency: globalCache->getLatencyGet())
+                        size_t currIndex = 0;
+                        size_t nextIndex = globalCache->getSpinlockWithStat().getNextIndex();
+
+                        auto& lockStat = globalCache->getSpinlockWithStat().getStats();
+
+                        for (size_t currIndex = 0; currIndex != nextIndex; currIndex++)
                         {
-                            fileCacheLatencyGet << latency << "\n";
+
+                            double pendingLatency = getElapsedUsExt(
+                                lockStat[currIndex].m_requestTp, lockStat[currIndex].m_getTp
+                            );
+
+                            double holdingLatency = getElapsedUsExt(
+                                lockStat[currIndex].m_getTp, lockStat[currIndex].m_releaseTp
+                            );
+                            
+                            fileCacheLockLatency    << pendingLatency << "\t"
+                                                    << holdingLatency << "\n";
+
+                            currIndex++;
                         }
+
+                        fileCacheLockLatency << std::endl;
+                        fileCacheLockLatency.close();
                     }
 
-                    fileCacheLatencyGet.close();
+                    // fileCacheLatencyGet.close();
 
-                    // Set latency
-                    filePath = "trace/";
-                    traceName = "cache-set-latency.csv";
+                    // // Set latency
+                    // filePath = "trace/";
+                    // traceName = "cache-set-latency.csv";
 
-                    fileName = filePath + traceName;
-                    std::ofstream fileCacheLatencySet(fileName);
+                    // fileName = filePath + traceName;
+                    // std::ofstream fileCacheLatencySet(fileName);
 
-                    if (!fileCacheLatencySet)
-                        SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nUnable to open the cache-set-latency.csv\n");
+                    // if (!fileCacheLatencySet)
+                    //     SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nUnable to open the cache-set-latency.csv\n");
 
-                    else
-                    {
-                        for (auto latency: globalCache->getLatencySet())
-                        {
-                            fileCacheLatencySet << latency << "\n";
-                        }
-                    }
+                    // else
+                    // {
+                    //     for (auto latency: globalCache->getLatencySet())
+                    //     {
+                    //         fileCacheLatencySet << latency << "\n";
+                    //     }
+                    // }
 
-                    fileCacheLatencySet.close();
+                    // fileCacheLatencySet.close();
 
                 }
 

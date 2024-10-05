@@ -15,7 +15,11 @@ namespace SPTAG {
 			SPTAG::VectorValueType valueType = SPTAG::VectorValueType::Undefined,
 			SPTAG::DistCalcMethod distCalcMethod = SPTAG::DistCalcMethod::Undefined,
 			const char* dataFilePath = nullptr,
-			const char* indexFilePath = nullptr);
+			const char* indexFilePath = nullptr,
+
+			// Author : Sukjoon Oh (sjoon@kaist.ac.kr), added
+			size_t cacheSize = 0
+			);
 
 		const std::string SEC_BASE = "Base";
 		const std::string SEC_SELECT_HEAD = "SelectHead";

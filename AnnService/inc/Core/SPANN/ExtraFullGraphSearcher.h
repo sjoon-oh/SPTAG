@@ -250,11 +250,31 @@ namespace SPTAG
                 return true;
             }
 
+
+            // 
+            // 
+            // Author : Sukjoon Oh (sjoon@kaist.ac.kr), added
+            //  Note : Existing function replace with empty
             virtual void SearchIndex(ExtraWorkSpace* p_exWorkSpace,
                 QueryResult& p_queryResults,
                 std::shared_ptr<VectorIndex> p_index,
                 SearchStats* p_stats,
-                std::set<int>* truth, std::map<int, std::set<int>>* found)
+                std::set<int>* truth, std::map<int, std::set<int>>* found
+                )
+            {
+                // Nothing here.
+            }
+
+            // 
+            // Author : Sukjoon Oh (sjoon@kaist.ac.kr), added
+            //  Note : Existing function replace with empty
+            virtual void SearchIndexThreadAware(ExtraWorkSpace* p_exWorkSpace,
+                QueryResult& p_queryResults,
+                std::shared_ptr<VectorIndex> p_index,
+                SearchStats* p_stats,
+                std::set<int>* truth, std::map<int, std::set<int>>* found,
+                int p_tid
+                )
             {
                 const uint32_t postingListCount = static_cast<uint32_t>(p_exWorkSpace->m_postingIDs.size());
 
@@ -367,7 +387,7 @@ namespace SPTAG
                 //  Note: Record raw index
                 //
                 timeStart = std::chrono::steady_clock::now();
-                BatchReadFileAsync(m_indexFiles, (p_exWorkSpace->m_diskRequests).data(), postingListCount);
+                BatchReadFileAsync(m_indexFiles, (p_exWorkSpace->m_diskRequests).data(), postingListCount, p_tid);
                 timeEnd = std::chrono::steady_clock::now();
 #else
                 while (unprocessed > 0)

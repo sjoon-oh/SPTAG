@@ -8,83 +8,96 @@
 // #include <sys/syscall.h>
 #include <linux/aio_abi.h>
 
-#include "inc/Extension/CacheLru.hh"
+#include "inc/Extension/CacheLruWeak.hh"
 #include "inc/Helper/DiskIO.h"
 
 using namespace SPTAG::EXT;
 
 
-CacheStats::CacheStats()
+CacheStatWeak::CacheStatWeak() noexcept
     : m_hitCount(0), m_missCount(0), m_evictCount(0), m_currentSize(0)
 {
 
 }
 
+CacheStatWeak::CacheStatWeak(uint64_t p_hitCount, uint64_t p_missCount, uint64_t p_evictCount, uint64_t p_currentSize, double p_localHitRatio) noexcept
+    : m_hitCount(p_hitCount), m_missCount(p_missCount), m_evictCount(p_evictCount), m_currentSize(p_currentSize), m_localHitRatio(p_localHitRatio)
+{
 
-CacheStats::~CacheStats()
+}
+
+
+CacheStatWeak::~CacheStatWeak() noexcept
 {
 
 }
 
 
 uint64_t
-CacheStats::getHitCount() const 
+CacheStatWeak::getHitCount() const noexcept
 {
     return m_hitCount;
 }
 
 
 uint64_t
-CacheStats::getMissCount() const 
+CacheStatWeak::getMissCount() const noexcept
 {
     return m_missCount;
 }
 
 
 uint64_t
-CacheStats::getEvictCount() const
+CacheStatWeak::getEvictCount() const noexcept
 {
     return m_evictCount;
 }
 
 
 uint64_t
-CacheStats::getCurrentSize() const
+CacheStatWeak::getCurrentSize() const noexcept
 {
     return m_currentSize;
 }
 
 
+double
+CacheStatWeak::getLocalHitRatio() const noexcept
+{
+    return m_localHitRatio;
+}
+
+
 void
-CacheStats::incrHitCount(uint64_t p_val)
+CacheStatWeak::incrHitCount(uint64_t p_val) noexcept
 {
     m_hitCount += p_val;
 }
 
 
 void
-CacheStats::incrMissCount(uint64_t p_val)
+CacheStatWeak::incrMissCount(uint64_t p_val) noexcept
 {
     m_missCount += p_val;
 }
 
 
 void
-CacheStats::incrEvictCount(uint64_t p_val)
+CacheStatWeak::incrEvictCount(uint64_t p_val) noexcept
 {
     m_evictCount += p_val;
 }
 
 
 void
-CacheStats::setCurrentSize(uint64_t p_val)
+CacheStatWeak::setCurrentSize(uint64_t p_val) noexcept
 {
     m_currentSize = p_val;
 }
 
 
 void
-CacheStats::resetAll()
+CacheStatWeak::resetAll() noexcept
 {
     m_hitCount = 0;
     m_missCount = 0;
@@ -92,25 +105,25 @@ CacheStats::resetAll()
 }
 
 
-CacheLruSPANN::CacheLruSPANN(const size_t p_size)
+CacheLruSpannSt::CacheLruSpannSt(const size_t p_size) noexcept
     : CacheLru<uintptr_t>(p_size), m_delayedNumToCache(0)
 {
     m_delayPending = false;
 }
 
 
-CacheLruSPANN::~CacheLruSPANN()
+CacheLruSpannSt::~CacheLruSpannSt() noexcept
 {
 
 }
 
 
 void
-CacheLruSPANN::setDelayedToCache(
+CacheLruSpannSt::setDelayedToCache(
         size_t p_delayedNumToCache,
         std::vector<bool> p_delayedToCache,
         void* p_requests
-    )
+    ) noexcept
 {
     m_delayPending = true;
     m_delayedNumToCache = p_delayedNumToCache;
@@ -124,19 +137,15 @@ CacheLruSPANN::setDelayedToCache(
 struct ListInfo
 {
     std::size_t listTotalBytes = 0;
-    
     int listEleCount = 0;
-
     std::uint16_t listPageCount = 0;
-
     std::uint64_t listOffset = 0;
-
     std::uint16_t pageOffset = 0;
 };
 
 
 void 
-CacheLruSPANN::refreshCache()
+CacheLruSpannSt::refreshCache() noexcept
 {
     if (m_delayPending == true)
     {
@@ -166,7 +175,7 @@ CacheLruSPANN::refreshCache()
 
 
 void 
-CacheLruSPANN::refreshCacheBulk()
+CacheLruSpannSt::refreshCacheBulk() noexcept
 {
     if (m_delayPending == true)
     {   
@@ -215,12 +224,3 @@ CacheLruSPANN::refreshCacheBulk()
     
     m_delayPending = false;
 }
-
-
-
-
-
-
-
-
-

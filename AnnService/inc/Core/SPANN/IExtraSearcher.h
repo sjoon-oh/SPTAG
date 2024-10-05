@@ -237,6 +237,16 @@ namespace SPTAG {
                 std::set<int>* truth = nullptr,
                 std::map<int, std::set<int>>* found = nullptr) = 0;
 
+            // 
+            // Author : Sukjoon Oh (sjoon@kaist.ac.kr)
+            //  Note : Added.
+            virtual void SearchIndexThreadAware(ExtraWorkSpace* p_exWorkSpace,
+                QueryResult& p_queryResults,
+                std::shared_ptr<VectorIndex> p_index,
+                SearchStats* p_stats,
+                std::set<int>* truth = nullptr,
+                std::map<int, std::set<int>>* found = nullptr, int = 0) = 0;
+
             virtual bool SearchIterativeNext(ExtraWorkSpace* p_exWorkSpace,
                 QueryResult& p_queryResults,
                 std::shared_ptr<VectorIndex> p_index) = 0;

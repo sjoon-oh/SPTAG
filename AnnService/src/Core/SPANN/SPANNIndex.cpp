@@ -189,8 +189,18 @@ namespace SPTAG
 
 #pragma region K-NN search
 
+
+        // 
+        // Author : Sukjoon Oh (sjoon@kaist.ac.kr), added
+        //  Note : Replaced to MT
         template<typename T>
         ErrorCode Index<T>::SearchIndex(QueryResult &p_query, bool p_searchDeleted) const
+        {
+
+        }
+
+        template<typename T>
+        ErrorCode Index<T>::SearchIndex(QueryResult &p_query, bool p_searchDeleted, int p_tid) const
         {
             if (!m_bReady) return ErrorCode::EmptyIndex;
 
@@ -236,7 +246,13 @@ namespace SPTAG
                 }
 
                 p_queryResults->Reverse();
-                m_extraSearcher->SearchIndex(workSpace.get(), *p_queryResults, m_index, nullptr);
+
+                // 
+                // Author : Sukjoon Oh (sjoon@kaist.ac.kr), added
+                //  Note : Replaced to MT
+                // m_extraSearcher->SearchIndex(workSpace.get(), *p_queryResults, m_index, nullptr);
+                m_extraSearcher->SearchIndexThreadAware(workSpace.get(), *p_queryResults, m_index, nullptr, nullptr, nullptr, p_tid);
+                
                 m_workSpaceFactory->ReturnWorkSpace(std::move(workSpace));
                 p_queryResults->SortResult();
             }
@@ -359,7 +375,7 @@ namespace SPTAG
         }
 
         template <typename T>
-        ErrorCode Index<T>::SearchDiskIndex(QueryResult& p_query, SearchStats* p_stats) const
+        ErrorCode Index<T>::SearchDiskIndex(QueryResult& p_query, SearchStats* p_stats, int p_tid) const
         {
             if (nullptr == m_extraSearcher) return ErrorCode::EmptyIndex;
 
@@ -407,7 +423,12 @@ namespace SPTAG
             }
 
             p_queryResults->Reverse();
-            m_extraSearcher->SearchIndex(workSpace.get(), *p_queryResults, m_index, p_stats);
+
+            // Author : Sukjoon Oh (sjoon@kaist.ac.kr), added
+            //  Note : Replaced
+            // m_extraSearcher->SearchIndex(workSpace.get(), *p_queryResults, m_index, p_stats);
+            m_extraSearcher->SearchIndexThreadAware(workSpace.get(), *p_queryResults, m_index, p_stats, nullptr, nullptr, p_tid);
+            
             m_workSpaceFactory->ReturnWorkSpace(std::move(workSpace));
             p_queryResults->SortResult();
             return ErrorCode::Success;

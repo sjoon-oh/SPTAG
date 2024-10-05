@@ -129,6 +129,12 @@ namespace SPTAG
             ErrorCode BuildIndex(bool p_normalized = false);
             ErrorCode SearchIndex(QueryResult &p_query, bool p_searchDeleted = false) const;
 
+            // 
+            // Author : Sukjoon Oh (sjoon@kaist.ac.kr)
+            //  Note : Replaced.
+            ErrorCode SearchIndex(QueryResult &p_query, bool p_searchDeleted = false, int p_tid = 0) const;
+
+
             std::shared_ptr<ResultIterator> GetIterator(const void* p_target, bool p_searchDeleted = false) const;
             ErrorCode SearchIndexIterativeNext(QueryResult& p_results, COMMON::WorkSpace* workSpace, int batch, int& resultCount, bool p_isFirst, bool p_searchDeleted = false) const;
             ErrorCode SearchIndexIterativeEnd(std::unique_ptr<COMMON::WorkSpace> workSpace) const;
@@ -140,6 +146,11 @@ namespace SPTAG
             ErrorCode SearchIndexWithFilter(QueryResult& p_query, std::function<bool(const ByteArray&)> filterFunc, int maxCheck = 0, bool p_searchDeleted = false) const;
 
             ErrorCode SearchDiskIndex(QueryResult& p_query, SearchStats* p_stats = nullptr) const;
+            // 
+            // Author : Sukjoon Oh (sjoon@kaist.ac.kr)
+            //  Note : Replaced.
+            ErrorCode SearchDiskIndex(QueryResult& p_query, SearchStats* p_stats = nullptr, int p_tid = 0) const;
+
 	        bool SearchDiskIndexIterative(QueryResult& p_headQuery, QueryResult& p_query, ExtraWorkSpace* extraWorkspace) const;
             ErrorCode DebugSearchDiskIndex(QueryResult& p_query, int p_subInternalResultNum, int p_internalResultNum,
                 SearchStats* p_stats = nullptr, std::set<int>* truth = nullptr, std::map<int, std::set<int>>* found = nullptr) const;

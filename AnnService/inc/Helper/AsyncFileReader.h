@@ -645,7 +645,7 @@ namespace SPTAG
             std::vector<aio_context_t> m_iocps;
         };
 #endif
-        void BatchReadFileAsync(std::vector<std::shared_ptr<Helper::DiskIO>>& handlers, AsyncReadRequest* readRequests, int num);
+        void BatchReadFileAsync(std::vector<std::shared_ptr<Helper::DiskIO>>& handlers, AsyncReadRequest* readRequests, int num, int p_tid = 0);
     }
 }
 

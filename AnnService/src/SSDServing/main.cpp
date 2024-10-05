@@ -3,6 +3,11 @@
 
 #include <iostream>
 
+// 
+// Author : Sukjoon Oh (sjoon@kaist.ac.kr), added
+// 
+#include <string>
+
 #include "inc/Core/Common.h"
 #include "inc/Core/VectorIndex.h"
 #include "inc/Core/SPANN/Index.h"
@@ -20,8 +25,10 @@ using namespace SPTAG;
 // Author: Sukjoon Oh (sjoon@kaist.ac.kr)
 // 
 // 
-#include "inc/Extension/CacheLru.hh"
-extern std::unique_ptr<SPTAG::EXT::CacheLruSPANN> globalCache;
+#include "inc/Extension/CacheLruWeak.hh"
+#include "inc/Extension/CacheLruMt.hh"
+
+extern std::unique_ptr<SPTAG::EXT::CacheLruSpannMt> globalCache;
 
 namespace SPTAG {
 	namespace SSDServing {
@@ -32,7 +39,11 @@ namespace SPTAG {
 			VectorValueType valueType,
 			DistCalcMethod distCalcMethod,
 			const char* dataFilePath, 
-			const char* indexFilePath) {
+			const char* indexFilePath,
+			// 
+			// Author : Sukjoon Oh (sjoon@kaist.ac.kr), added
+			size_t cacheSize
+			) {
 
 
 			bool searchSSD = false;
@@ -175,29 +186,10 @@ namespace SPTAG {
 				// Author: Sukjoon Oh (sjoon@kaist.ac.kr)
 				// Delay for blocks to be flushed.
 				
-				// SPACEV1B MAX : 65766146048
-				// const size_t globalCacheSize = 68719476736;	// 64GB
-				const size_t globalCacheSize = 65498251264; // 60.5GB
-				// const size_t globalCacheSize = 64424509440; // 60GB
-				// const size_t globalCacheSize = 60129542144; // 56GB
-				// const size_t globalCacheSize = 55834574848; // 52GB
 
-				// const size_t globalCacheSize = 51539607552; // 48GB
-				// const size_t globalCacheSize = 34359738368;	// 32GB
-				// const size_t globalCacheSize = 17179869184; // 16GB
-				// const size_t globalCacheSize = 8589934592; // 8GB
-				// const size_t globalCacheSize = 4294967296; // 4GB
-				// const size_t globalCacheSize = 3221225472; // 3GB
-				// const size_t globalCacheSize = 2147483648; // 2GB
-				// const size_t globalCacheSize = 1073741824; // 1GB
-				
-				// const size_t globalCacheSize = 536870912; // 512MB
-				// const size_t globalCacheSize = 268435456; // 256MB
-				// const size_t globalCacheSize = 134217728; // 128MB
-				// const size_t globalCacheSize = 67108864; // 64MB
-				// const size_t globalCacheSize = 33554432; // 32MB
+				const size_t globalCacheSize = (cacheSize);
 
-				globalCache.reset(new EXT::CacheLruSPANN(globalCacheSize));
+				globalCache.reset(new EXT::CacheLruSpannMt(globalCacheSize));
 
 				// sleep(40);
 
@@ -225,8 +217,24 @@ int main(int argc, char* argv[]) {
 		exit(-1);
 	}
 
-	std::map<std::string, std::map<std::string, std::string>> my_map;
-	auto ret = SSDServing::BootProgram(false, &my_map, argv[1]);
+	std::map<std::string, std::map<std::string, std::string>> my_map;	
+
+	// 
+	// Author : Sukjoon Oh (sjoon@kaist.ac.kr), added
+	// 	Note : 
+	// auto ret = SSDServing::BootProgram(false, &my_map, argv[1]);
+	size_t cacheSize = std::stoll(argv[2]);
+
+	SPTAGLIB_LOG(Helper::LogLevel::LL_Info,
+			"Cache size set: {}\n", cacheSize);
+
+	auto ret = SSDServing::BootProgram(false, &my_map, argv[1], 
+		SPTAG::VectorValueType::Undefined,
+		SPTAG::DistCalcMethod::Undefined,
+		nullptr,
+		nullptr,
+		cacheSize);
+
 	return ret;
 }
 

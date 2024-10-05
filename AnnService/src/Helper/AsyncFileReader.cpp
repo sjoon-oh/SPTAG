@@ -9,10 +9,11 @@
 #include <utility>
 #include <iostream>
 
-#include "inc/Extension/CacheLru.hh"
+#include "inc/Extension/CacheLruWeak.hh"
+#include "inc/Extension/CacheLruMt.hh"
 
 
-std::unique_ptr<SPTAG::EXT::CacheLruSPANN> globalCache;
+std::unique_ptr<SPTAG::EXT::CacheLruSpannMt> globalCache;
 
 namespace SPTAG {
     namespace Helper {
@@ -61,7 +62,7 @@ namespace SPTAG {
         }
 
         struct timespec AIOTimeout {0, 30000};
-        void BatchReadFileAsync(std::vector<std::shared_ptr<Helper::DiskIO>>& handlers, AsyncReadRequest* readRequests, int num)
+        void BatchReadFileAsync(std::vector<std::shared_ptr<Helper::DiskIO>>& handlers, AsyncReadRequest* readRequests, int num, int p_tid)
         {
             std::vector<struct iocb> myiocbs(num);
             std::vector<std::vector<struct iocb*>> iocbs(handlers.size());
@@ -109,8 +110,7 @@ namespace SPTAG {
                 ListInfo* listInfo = (ListInfo*)(readRequest->m_payload);
                 uintptr_t key = static_cast<uintptr_t>(readRequest->m_offset) + listInfo->pageOffset;
                 
-                EXT::CacheItem<uintptr_t>* fetchedItem = 
-                    globalCache->getCachedItem(key); 
+                EXT::CacheItem<uintptr_t>* fetchedItem = globalCache->getCachedItem(key); 
                     // Key is the offset.
 
                 if (fetchedItem != nullptr)
@@ -123,7 +123,7 @@ namespace SPTAG {
                 }
 
                 timeEnd = std::chrono::steady_clock::now();
-                globalCache->recordLatencyGet(getElapsedMsIndependent(timeStart, timeEnd));
+                // globalCache->recordLatencyGet(getElapsedMsIndependent(timeStart, timeEnd));
 #endif
 
                 channel = readRequest->m_status & 0xffff;
@@ -199,7 +199,7 @@ namespace SPTAG {
                 }
             }
 
-            globalCache->setDelayedToCache(num, std::move(requestToCache), readRequests);
+            globalCache->setDelayedToCache(num, std::move(requestToCache), readRequests, p_tid);
 
             // auto cacheStat = globalCache->getCacheStat();
             // SPTAGLIB_LOG(Helper::LogLevel::LL_Info, 
