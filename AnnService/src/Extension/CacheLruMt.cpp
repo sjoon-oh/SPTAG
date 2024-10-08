@@ -117,10 +117,10 @@ CacheLruSpannMt::~CacheLruSpannMt() noexcept
 bool
 CacheLruSpannMt::setItemCached(uintptr_t p_key, uint8_t* p_object, size_t p_size) noexcept
 {
-    size_t traceHandle = m_itemLock.getLock();
+    size_t traceHandle = m_itemLock.getRefreshLock();
     if (isItemCached(p_key))
     {
-        m_itemLock.releaseLock(traceHandle);
+        m_itemLock.releaseRefreshLock(traceHandle);
         return false;
     }
 
@@ -143,7 +143,7 @@ CacheLruSpannMt::setItemCached(uintptr_t p_key, uint8_t* p_object, size_t p_size
     m_cachedItems[p_key] = m_usageList.begin();
     m_stats.incrCurrentSize(p_size);
 
-    m_itemLock.releaseLock(traceHandle);
+    m_itemLock.releaseRefreshLock(traceHandle);
     return true;
 }
 
@@ -151,12 +151,12 @@ CacheLruSpannMt::setItemCached(uintptr_t p_key, uint8_t* p_object, size_t p_size
 SPTAG::EXT::CacheItem<uintptr_t>* 
 SPTAG::EXT::CacheLruSpannMt::getCachedItem(uintptr_t p_key) noexcept
 {
-    size_t traceHandle = m_itemLock.getLock();
+    size_t traceHandle = m_itemLock.getSearchLock();
 
     if (!isItemCached(p_key))
     {
         m_stats.incrMissCount(1);
-        m_itemLock.releaseLock(traceHandle);
+        m_itemLock.releaseSearchLock(traceHandle);
         return nullptr; // Item not found
     }
 
@@ -170,7 +170,7 @@ SPTAG::EXT::CacheLruSpannMt::getCachedItem(uintptr_t p_key) noexcept
     m_cachedItems[p_key] = m_usageList.begin(); // Update map
     m_stats.incrHitCount(1);
 
-    m_itemLock.releaseLock(traceHandle);
+    m_itemLock.releaseSearchLock(traceHandle);
 
     return &(*(m_cachedItems[p_key])); // Return the item
 }
@@ -224,6 +224,8 @@ void
 SPTAG::EXT::CacheLruSpannMt::resetStat() noexcept
 {
     m_stats.resetAll();
+    
+    // 
 }
 
 
@@ -255,7 +257,7 @@ struct ListInfo
 void
 CacheLruSpannMt::refreshCacheBulkSingle(int p_tid) noexcept
 {
-    size_t traceHandle = m_itemLock.getLock();
+    size_t traceHandle = m_itemLock.getRefreshLock();
 
     size_t localHits = 0;
     size_t totalSize = 0;
@@ -317,7 +319,7 @@ CacheLruSpannMt::refreshCacheBulkSingle(int p_tid) noexcept
         m_stats.getHitCount(), m_stats.getMissCount(), m_stats.getEvictCount(), m_stats.getCurrentSize(), localHitRatio
     );
     
-    m_itemLock.releaseLock(traceHandle);
+    m_itemLock.releaseRefreshLock(traceHandle);
 }
 
 

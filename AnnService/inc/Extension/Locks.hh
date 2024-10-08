@@ -56,8 +56,11 @@ namespace SPTAG {
         class SpinlockWithStat : public Spinlock
         {
         protected:
-            std::atomic<size_t> m_statIndex;
-            std::array<struct LockStat, EXTLOCK_STAT_MAX> m_stats;
+            std::atomic<size_t> m_searchStatIndex;
+            std::atomic<size_t> m_refreshStatIndex;
+
+            std::array<struct LockStat, EXTLOCK_STAT_MAX> m_searchStat;
+            std::array<struct LockStat, EXTLOCK_STAT_MAX> m_refreshStat;
 
         #define getElapsedUsExt(start, end) \
             (std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() * 1.0 / 1000.0)
@@ -66,7 +69,8 @@ namespace SPTAG {
         public:
             SpinlockWithStat() noexcept
             {
-                m_statIndex.store(0);
+                m_searchStatIndex.store(0);
+                m_refreshStatIndex.store(0);
             };
             virtual ~SpinlockWithStat() noexcept = default;
 
@@ -75,39 +79,75 @@ namespace SPTAG {
             SpinlockWithStat& operator = (const Spinlock&) = delete;
 
 
-            inline size_t getLock() noexcept 
+            inline size_t getSearchLock() noexcept
             {
-                size_t handle = m_statIndex.fetch_add(1);
+                size_t handle = m_searchStatIndex.fetch_add(1);
                 if (handle < EXTLOCK_STAT_MAX)
-                    m_stats[handle].m_requestTp = std::chrono::steady_clock::now();
+                    m_searchStat[handle].m_requestTp = std::chrono::steady_clock::now();
                 
                 Spinlock::getLock();
 
                 if (handle < EXTLOCK_STAT_MAX)
-                    m_stats[handle].m_getTp = std::chrono::steady_clock::now();
+                    m_searchStat[handle].m_getTp = std::chrono::steady_clock::now();
                 
                 return handle;
             };
 
 
-            inline void releaseLock(const size_t p_handle) noexcept
+            inline size_t getRefreshLock() noexcept
+            {
+                size_t handle = m_refreshStatIndex.fetch_add(1);
+                if (handle < EXTLOCK_STAT_MAX)
+                    m_refreshStat[handle].m_requestTp = std::chrono::steady_clock::now();
+                
+                Spinlock::getLock();
+
+                if (handle < EXTLOCK_STAT_MAX)
+                    m_refreshStat[handle].m_getTp = std::chrono::steady_clock::now();
+                
+                return handle;
+            };
+
+
+            inline void releaseSearchLock(const size_t p_handle) noexcept
             {
                 Spinlock::releaseLock();
 
                 if (p_handle < EXTLOCK_STAT_MAX)
-                    m_stats[p_handle].m_releaseTp= std::chrono::steady_clock::now();
+                    m_searchStat[p_handle].m_releaseTp= std::chrono::steady_clock::now();
             }
 
 
-            inline std::array<struct LockStat, EXTLOCK_STAT_MAX>& getStats() noexcept
+            inline void releaseRefreshLock(const size_t p_handle) noexcept
             {
-                return m_stats;
+                Spinlock::releaseLock();
+
+                if (p_handle < EXTLOCK_STAT_MAX)
+                    m_refreshStat[p_handle].m_releaseTp= std::chrono::steady_clock::now();
             }
 
 
-            inline size_t getNextIndex() noexcept
+            inline std::array<struct LockStat, EXTLOCK_STAT_MAX>& getSearchStat() noexcept
             {
-                return m_statIndex.load();
+                return m_searchStat;
+            }
+
+
+            inline std::array<struct LockStat, EXTLOCK_STAT_MAX>& getRefreshStat() noexcept
+            {
+                return m_refreshStat;
+            }
+
+
+            inline size_t getSearchNextIndex() noexcept
+            {
+                return m_searchStatIndex.load();
+            }
+
+
+            inline size_t getRefreshNextIndex() noexcept
+            {
+                return m_refreshStatIndex.load();
             }
         };
 

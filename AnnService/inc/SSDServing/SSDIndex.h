@@ -17,8 +17,12 @@
 #include "inc/Extension/CacheLruWeak.hh"
 #include "inc/Extension/CacheLruMt.hh"
 
-
 extern std::unique_ptr<SPTAG::EXT::CacheLruSpannMt> globalCache;
+
+double globalStatWarmupQPS;
+double globalStatQueryQPS;
+
+double globalStatQPS;
 
 
 namespace SPTAG {
@@ -195,6 +199,10 @@ namespace SPTAG {
                     numQueries / sendingCost,
                     static_cast<uint32_t>(numQueries));
 
+                // Author : Sukjoon Oh (sjoon@kaist.ac.kr)
+                // 
+                globalStatQPS = (numQueries * 1.0) / sendingCost;
+
                 for (int i = 0; i < numQueries; i++) { p_results[i].CleanQuantizedTarget(); }
             }
 
@@ -246,6 +254,8 @@ namespace SPTAG {
                     SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nFinish warmup...\n");
                 }
 
+                globalStatWarmupQPS = globalStatQPS;
+
                 // 
                 // Author : Sukjoon Oh (sjoon@kaist.ac.kr), added
                 globalCache->resetStat();
@@ -275,6 +285,10 @@ namespace SPTAG {
                 SearchSequential(p_index, numThreads, results, stats, p_opts.m_queryCountLimit, internalResultNum);
 
                 SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nFinish ANN Search...\n");
+
+                // 
+                // Author : Sukjoon Oh (sjoon@kaist.ac.kr), added
+                globalStatQueryQPS = globalStatQPS;
 
                 std::shared_ptr<VectorSet> vectorSet;
 
@@ -444,20 +458,20 @@ namespace SPTAG {
 
                     // Get latency
                     filePath = "trace/";
-                    traceName = "cache-lock-latency.csv";
+                    traceName = "cache-lock-latency-search.csv";
 
                     fileName = filePath + traceName;
-                    std::ofstream fileCacheLockLatency(fileName);
+                    std::ofstream fileCacheSearchLockLatency(fileName);
 
-                    if (!fileCacheLockLatency)
-                        SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nUnable to open the cache-lock-latency.csv\n");
+                    if (!fileCacheSearchLockLatency)
+                        SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nUnable to open the cache-lock-latency-search.csv\n");
 
                     else
                     {
                         size_t currIndex = 0;
-                        size_t nextIndex = globalCache->getSpinlockWithStat().getNextIndex();
+                        size_t nextIndex = globalCache->getSpinlockWithStat().getSearchNextIndex();
 
-                        auto& lockStat = globalCache->getSpinlockWithStat().getStats();
+                        auto& lockStat = globalCache->getSpinlockWithStat().getSearchStat();
 
                         for (size_t currIndex = 0; currIndex != nextIndex; currIndex++)
                         {
@@ -470,15 +484,55 @@ namespace SPTAG {
                                 lockStat[currIndex].m_getTp, lockStat[currIndex].m_releaseTp
                             );
                             
-                            fileCacheLockLatency    << pendingLatency << "\t"
-                                                    << holdingLatency << "\n";
+                            fileCacheSearchLockLatency  << pendingLatency << "\t"
+                                                        << holdingLatency << "\n";
 
                             currIndex++;
                         }
 
-                        fileCacheLockLatency << std::endl;
-                        fileCacheLockLatency.close();
+                        fileCacheSearchLockLatency << std::endl;
+                        fileCacheSearchLockLatency.close();
                     }
+
+
+                    // Get latency
+                    filePath = "trace/";
+                    traceName = "cache-lock-latency-refresh.csv";
+
+                    fileName = filePath + traceName;
+                    std::ofstream fileCacheRefreshLockLatency(fileName);
+
+                    if (!fileCacheRefreshLockLatency)
+                        SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nUnable to open the cache-lock-latency-refresh.csv\n");
+
+                    else
+                    {
+                        size_t currIndex = 0;
+                        size_t nextIndex = globalCache->getSpinlockWithStat().getRefreshNextIndex();
+
+                        auto& lockStat = globalCache->getSpinlockWithStat().getRefreshStat();
+
+                        for (size_t currIndex = 0; currIndex != nextIndex; currIndex++)
+                        {
+
+                            double pendingLatency = getElapsedUsExt(
+                                lockStat[currIndex].m_requestTp, lockStat[currIndex].m_getTp
+                            );
+
+                            double holdingLatency = getElapsedUsExt(
+                                lockStat[currIndex].m_getTp, lockStat[currIndex].m_releaseTp
+                            );
+                            
+                            fileCacheRefreshLockLatency << pendingLatency << "\t"
+                                                        << holdingLatency << "\n";
+
+                            currIndex++;
+                        }
+
+                        fileCacheRefreshLockLatency << std::endl;
+                        fileCacheRefreshLockLatency.close();
+                    }
+
 
                     // fileCacheLatencyGet.close();
 
@@ -501,6 +555,31 @@ namespace SPTAG {
                     // }
 
                     // fileCacheLatencySet.close();
+
+                    filePath = "trace/";
+                    traceName = "search-trace-raw.csv";
+
+                    fileName = filePath + traceName;
+
+                    std::ofstream fileSearchRawTrace(fileName);
+
+                    if (!fileSearchRawTrace)
+                        SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nUnable to open the search-trace-raw.csv\n");
+                    
+                    else
+                    {   
+                        // Write start.
+                        for (auto& ss: stats)
+                        {                            
+                            fileSearchRawTrace  << static_cast<double>(ss.m_totalSearchLatency - ss.m_exLatency) << "\t" 
+                                                << static_cast<double>(ss.m_exLatency) << "\t"
+                                                << static_cast<double>(ss.m_totalSearchLatency) << "\n";
+                        }
+
+                        fileSearchRawTrace << std::endl;
+                        fileSearchRawTrace.close();
+                    }
+
 
                 }
 
