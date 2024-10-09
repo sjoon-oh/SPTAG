@@ -2,8 +2,8 @@
 // Author: Sukjoon Oh (sjoon@kaist.ac.kr)
 // 
 
-#ifndef _SPTAG_EXT_CACHE_LRUMT_H
-#define _SPTAG_EXT_CACHE_LRUMT_H
+#ifndef _SPTAG_EXT_CACHE_FIFOMT_H
+#define _SPTAG_EXT_CACHE_FIFOMT_H
 
 #include <chrono>
 #include <cstdint>
@@ -24,58 +24,25 @@
 
 #include "inc/Extension/Locks.hh"
 #include "inc/Extension/CacheLruWeak.hh"
+#include "inc/Extension/CacheLruMt.hh"
 
 namespace SPTAG {
     namespace EXT {
 
-        #define MAX_NTHREADS    8192
-
-        class CacheStatMt
-        {
-        protected:
-            std::atomic_ulong m_hitCount;
-            std::atomic_ulong m_missCount;
-            std::atomic_ulong m_evictCount;
-
-            std::atomic_ulong m_currentSize;
-
-
-        public:
-            CacheStatMt() noexcept;
-            virtual ~CacheStatMt() noexcept;
-
-            uint64_t getHitCount() const noexcept;
-            uint64_t getMissCount() const noexcept;
-            uint64_t getEvictCount() const noexcept;
-            uint64_t getCurrentSize() const noexcept;
-
-            void incrHitCount(uint64_t) noexcept;
-            void incrMissCount(uint64_t) noexcept;
-            void incrEvictCount(uint64_t) noexcept;
-
-            void incrCurrentSize(uint64_t) noexcept;
-            void decrCurrentSize(uint64_t) noexcept;
-
-            void resetAll() noexcept;
-        };
-
-
-        // 
-        // Simple Hash-based LRU cache
-        class CacheLruSpannMt
+        class CacheFifoSpannMt
         {
         protected:
             const size_t m_cacheCapacity;
-            
+
             CacheStatMt m_stats;
             std::vector<CacheStatWeak> m_statTrace;
 
+            bool m_enableLock;
             SpinlockWithStat m_itemLock;
-            
+
             std::unordered_map<uintptr_t, typename std::list<CacheItem<uintptr_t>>::iterator> m_cachedItems;
             std::list<CacheItem<uintptr_t>> m_usageList;    // For tracking LRU order
 
-            // Delay
             struct PendingInfo
             {
                 size_t m_delayedNumToCache;
@@ -99,9 +66,9 @@ namespace SPTAG {
 
 
         public:
-            CacheLruSpannMt(const size_t) noexcept;
-            virtual ~CacheLruSpannMt() noexcept;
-            
+            CacheFifoSpannMt(const size_t, bool) noexcept;
+            virtual ~CacheFifoSpannMt() noexcept;
+
             bool setItemCached(uintptr_t, uint8_t*, size_t) noexcept;
             CacheItem<uintptr_t>* getCachedItem(uintptr_t) noexcept;
             inline const bool isItemCached(uintptr_t) noexcept;

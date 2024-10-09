@@ -27,8 +27,9 @@ using namespace SPTAG;
 // 
 #include "inc/Extension/CacheLruWeak.hh"
 #include "inc/Extension/CacheLruMt.hh"
+#include "inc/Extension/CacheFifoMt.hh"
 
-extern std::unique_ptr<SPTAG::EXT::CacheLruSpannMt> globalCache;
+extern std::unique_ptr<SPTAG::EXT::CacheFifoSpannMt> globalCache;
 
 namespace SPTAG {
 	namespace SSDServing {
@@ -189,7 +190,8 @@ namespace SPTAG {
 
 				const size_t globalCacheSize = (cacheSize);
 
-				globalCache.reset(new EXT::CacheLruSpannMt(globalCacheSize));
+				// globalCache.reset(new EXT::CacheLruSpannMt(globalCacheSize));
+				globalCache.reset(new EXT::CacheFifoSpannMt(globalCacheSize, false));
 
 				// sleep(40);
 

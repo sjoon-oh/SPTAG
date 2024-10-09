@@ -16,8 +16,9 @@
 // Author : Sukjoon Oh (sjoon@kaist.ac.kr), added
 #include "inc/Extension/CacheLruWeak.hh"
 #include "inc/Extension/CacheLruMt.hh"
+#include "inc/Extension/CacheFifoMt.hh"
 
-extern std::unique_ptr<SPTAG::EXT::CacheLruSpannMt> globalCache;
+extern std::unique_ptr<SPTAG::EXT::CacheFifoSpannMt> globalCache;
 
 double globalStatWarmupQPS;
 double globalStatQueryQPS;

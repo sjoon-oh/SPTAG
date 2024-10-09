@@ -11,9 +11,10 @@
 
 #include "inc/Extension/CacheLruWeak.hh"
 #include "inc/Extension/CacheLruMt.hh"
+#include "inc/Extension/CacheFifoMt.hh"
 
 
-std::unique_ptr<SPTAG::EXT::CacheLruSpannMt> globalCache;
+std::unique_ptr<SPTAG::EXT::CacheFifoSpannMt> globalCache;
 
 namespace SPTAG {
     namespace Helper {
