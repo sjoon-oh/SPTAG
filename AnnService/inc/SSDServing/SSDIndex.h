@@ -12,13 +12,30 @@
 #include "inc/Helper/StringConvert.h"
 #include "inc/SSDServing/Utils.h"
 
+
+#define _CACHE_ENABLED_
+#if defined (_CACHE_ENABLED_)
+
 // 
 // Author : Sukjoon Oh (sjoon@kaist.ac.kr), added
 #include "inc/Extension/CacheLruWeak.hh"
 #include "inc/Extension/CacheLruMt.hh"
 #include "inc/Extension/CacheFifoMt.hh"
+#include "inc/Extension/CacheLfuMt.hh"
+#include "inc/Extension/CacheCorrLfu.hh"
 
+#define _CACHE_CORRLFU_
+#if defined (_CACHE_FIFO_)
 extern std::unique_ptr<SPTAG::EXT::CacheFifoSpannMt> globalCache;
+#elif defined (_CACHE_LFU_)
+extern std::unique_ptr<SPTAG::EXT::CacheLfuSpannMt> globalCache;
+#elif defined (_CACHE_LRU_)
+extern std::unique_ptr<SPTAG::EXT::CacheLruSpannMt> globalCache;
+#elif defined (_CACHE_CORRLFU_)
+extern std::unique_ptr<SPTAG::EXT::CacheCorrLfu> globalCache;
+#endif
+#endif
+
 
 double globalStatWarmupQPS;
 double globalStatQueryQPS;
@@ -422,6 +439,7 @@ namespace SPTAG {
                     }
                 }
 
+#if defined (_CACHE_ENABLED_)
                 SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nExporting cache trace...\n");
                 {
                     std::string filePath("trace/");
@@ -443,12 +461,14 @@ namespace SPTAG {
                             uint64_t missCount = stat.getMissCount();
                             uint64_t evictCount = stat.getEvictCount();
                             uint64_t currentSize = stat.getCurrentSize();
+
+                            double perQueryHitRatio = stat.getLocalHitRatio();
                             
                             fileCacheTrace  << hitCount << "\t"
                                             << missCount << "\t"
                                             << evictCount << "\t"
                                             << currentSize << "\t"
-                                            << static_cast<double>(hitCount) / (hitCount + missCount) << "\n";
+                                            << perQueryHitRatio << "\n";
                         }
 
                         fileCacheTrace << std::endl;
@@ -533,29 +553,7 @@ namespace SPTAG {
                         fileCacheRefreshLockLatency << std::endl;
                         fileCacheRefreshLockLatency.close();
                     }
-
-
-                    // fileCacheLatencyGet.close();
-
-                    // // Set latency
-                    // filePath = "trace/";
-                    // traceName = "cache-set-latency.csv";
-
-                    // fileName = filePath + traceName;
-                    // std::ofstream fileCacheLatencySet(fileName);
-
-                    // if (!fileCacheLatencySet)
-                    //     SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nUnable to open the cache-set-latency.csv\n");
-
-                    // else
-                    // {
-                    //     for (auto latency: globalCache->getLatencySet())
-                    //     {
-                    //         fileCacheLatencySet << latency << "\n";
-                    //     }
-                    // }
-
-                    // fileCacheLatencySet.close();
+#endif
 
                     filePath = "trace/";
                     traceName = "search-trace-raw.csv";

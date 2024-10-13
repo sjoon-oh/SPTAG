@@ -1,3 +1,4 @@
+#pragma once
 // Author: Sukjoon Oh (sjoon@kaist.ac.kr)
 // 
 
@@ -9,144 +10,73 @@
 #include <linux/aio_abi.h>
 
 #include "inc/Helper/DiskIO.h"
-
-#include "inc/Extension/CacheLruWeak.hh"
-#include "inc/Extension/CacheLruMt.hh"
+#include "inc/Extension/CacheLfuMt.hh"
 
 using namespace SPTAG::EXT;
 
 
-CacheStatMt::CacheStatMt() noexcept
-    : m_hitCount(0), m_missCount(0), m_evictCount(0), m_currentSize(0)
-{
-
-}
-
-
-CacheStatMt::~CacheStatMt() noexcept
-{
-
-}
-
-
-uint64_t
-CacheStatMt::getHitCount() const noexcept
-{
-    return m_hitCount.load();
-}
-
-
-uint64_t
-CacheStatMt::getMissCount() const noexcept
-{
-    return m_missCount.load();
-}
-
-
-uint64_t
-CacheStatMt::getEvictCount() const noexcept
-{
-    return m_evictCount.load();
-}
-
-
-uint64_t
-CacheStatMt::getCurrentSize() const noexcept
-{
-    return m_currentSize.load();
-}
-
-
-void
-CacheStatMt::incrHitCount(uint64_t p_val) noexcept
-{
-    m_hitCount.fetch_add(p_val);
-}
-
-
-void
-CacheStatMt::incrMissCount(uint64_t p_val) noexcept
-{
-    m_missCount.fetch_add(p_val);
-}
-
-
-void
-CacheStatMt::incrEvictCount(uint64_t p_val) noexcept
-{
-    m_evictCount.fetch_add(p_val);
-}
-
-
-void
-CacheStatMt::incrCurrentSize(uint64_t p_val) noexcept
-{
-    m_currentSize.fetch_add(p_val);
-}
-
-
-void
-CacheStatMt::decrCurrentSize(uint64_t p_val) noexcept
-{
-    m_currentSize.fetch_sub(p_val);
-}
-
-
-void
-CacheStatMt::resetAll() noexcept
-{
-    m_hitCount.store(0);
-    m_missCount.store(0);
-    m_evictCount.store(0);
-}
-
-
-CacheLruSpannMt::CacheLruSpannMt(const size_t p_capacity, bool p_enableLock) noexcept
-    : m_cacheCapacity(p_capacity), m_enableLock(p_enableLock)
+CacheLfuSpannMt::CacheLfuSpannMt(const size_t p_capacity, bool p_enableLock) noexcept
+    : m_cacheCapacity(p_capacity), m_enableLock(p_enableLock), m_minFrequency(0)
 {
     m_stats.resetAll();
 }
 
 
-CacheLruSpannMt::~CacheLruSpannMt() noexcept
+CacheLfuSpannMt::~CacheLfuSpannMt() noexcept
 {
 
 }
 
 
 bool
-CacheLruSpannMt::setItemCached(uintptr_t p_key, uint8_t* p_object, size_t p_size) noexcept
+CacheLfuSpannMt::setItemCached(uintptr_t p_key, uint8_t* p_object, size_t p_size) noexcept
 {
     size_t traceHandle = 0;
     if (m_enableLock)
         traceHandle = m_itemLock.getRefreshLock();
-
+    
     if (isItemCached(p_key))
     {
         if (m_enableLock)
             m_itemLock.releaseRefreshLock(traceHandle);
-        
+
         return false;
     }
 
     // 
     // Evict items until we have enough space for the new item
+    size_t evictCount = 0;
     while (m_stats.getCurrentSize() + p_size > m_cacheCapacity)
     {
-        CacheItem<uintptr_t>* lruItem = &(m_usageList.back());
-        uint64_t decrSize = lruItem->getSize();
-        
-        m_cachedItems.erase(lruItem->getKey());
-        m_usageList.pop_back();
-        m_stats.incrEvictCount(1);
+        uintptr_t evictKey = m_freqLruList[m_minFrequency].front();
+        m_freqLruList[m_minFrequency].pop_front();  // Pop least recently used
+
+        if (m_freqLruList.empty())
+            m_freqLruList.erase(m_minFrequency);
+
+        CacheItem<uintptr_t>& lruItem = (m_cachedItems[evictKey].m_item);
+        uint64_t decrSize = lruItem.getSize();
+
+        m_cachedItems.erase(evictKey);      
+        m_posInFreqList.erase(evictKey);
+
+        evictCount++;
 
         m_stats.decrCurrentSize(decrSize);
     }
 
-    m_usageList.emplace_front(p_key, p_object, p_size);
+    m_stats.incrEvictCount(evictCount);
 
-    m_cachedItems[p_key] = m_usageList.begin();
-    m_stats.incrCurrentSize(p_size);
+    m_cachedItems.insert(
+        std::make_pair(
+            p_key, 
+            CacheItemWrapper(CacheItem<uintptr_t>(p_key, p_object, p_size))
+        )
+    );
+    
+    m_minFrequency = 1;
+    m_freqLruList[m_minFrequency].push_back(p_key);
+    m_posInFreqList[p_key] = --m_freqLruList[m_minFrequency].end();
 
     if (m_enableLock)
         m_itemLock.releaseRefreshLock(traceHandle);
@@ -156,7 +86,7 @@ CacheLruSpannMt::setItemCached(uintptr_t p_key, uint8_t* p_object, size_t p_size
 
 
 SPTAG::EXT::CacheItem<uintptr_t>* 
-SPTAG::EXT::CacheLruSpannMt::getCachedItem(uintptr_t p_key) noexcept
+CacheLfuSpannMt::getCachedItem(uintptr_t p_key) noexcept
 {
     size_t traceHandle = 0;
     if (m_enableLock)
@@ -171,53 +101,61 @@ SPTAG::EXT::CacheLruSpannMt::getCachedItem(uintptr_t p_key) noexcept
         return nullptr; // Item not found
     }
 
-    // Move accessed item to front of usage list
-    auto it = m_cachedItems[p_key];
-    CacheItem<uintptr_t> itemToMove = std::move(*it); // Move the item out
-
-    m_usageList.erase(it); // Remove from current position
-    m_usageList.push_front(std::move(itemToMove)); // Add to front the previous item
-    
-    m_cachedItems[p_key] = m_usageList.begin(); // Update map
     m_stats.incrHitCount(1);
+
+    auto& item = m_cachedItems[p_key];
+    size_t prevItemFrequency = item.m_frequency;
+    
+    item.m_frequency += 1;
+
+    m_freqLruList[prevItemFrequency].erase(m_posInFreqList[p_key]);   // Erase from the LRU list
+    if (m_freqLruList[prevItemFrequency].empty())
+    {
+        m_freqLruList.erase(prevItemFrequency);
+        if (m_minFrequency == prevItemFrequency)
+            m_minFrequency += 1;
+    }
+
+    m_freqLruList[item.m_frequency].push_back(p_key);
+    m_posInFreqList[p_key] = --m_freqLruList[item.m_frequency].end(); // Update iterator
 
     if (m_enableLock)
         m_itemLock.releaseSearchLock(traceHandle);
 
-    return &(*(m_cachedItems[p_key])); // Return the item
+    return &(item.m_item); // Return the item
 }
 
 
 const bool
-SPTAG::EXT::CacheLruSpannMt::isItemCached(uintptr_t p_key) noexcept
+CacheLfuSpannMt::isItemCached(uintptr_t p_key) noexcept
 {
     return (m_cachedItems.find(p_key) != m_cachedItems.end());
 }
 
 
 SPTAG::EXT::CacheStatMt*
-SPTAG::EXT::CacheLruSpannMt::getCacheStat() noexcept
+CacheLfuSpannMt::getCacheStat() noexcept
 {
     return &(m_stats);
 }
 
 
 std::vector<CacheStatWeak>&
-SPTAG::EXT::CacheLruSpannMt::getCacheStatTrace() noexcept
+CacheLfuSpannMt::getCacheStatTrace() noexcept
 {
     return m_statTrace;
 }
 
 
 SPTAG::EXT::SpinlockWithStat&
-SPTAG::EXT::CacheLruSpannMt::getSpinlockWithStat() noexcept
+CacheLfuSpannMt::getSpinlockWithStat() noexcept
 {
     return m_itemLock;
 }
 
 
 void
-SPTAG::EXT::CacheLruSpannMt::recordStatTrace() noexcept
+CacheLfuSpannMt::recordStatTrace() noexcept
 {
     // uint64_t chkpHitCount = m_stats.getHitCount();
     // uint64_t chkpMissCount = m_stats.getMissCount();
@@ -233,16 +171,14 @@ SPTAG::EXT::CacheLruSpannMt::recordStatTrace() noexcept
 
 
 void
-SPTAG::EXT::CacheLruSpannMt::resetStat() noexcept
+CacheLfuSpannMt::resetStat() noexcept
 {
     m_stats.resetAll();
-    
-    // 
 }
 
 
 void
-CacheLruSpannMt::setDelayedToCache(
+CacheLfuSpannMt::setDelayedToCache(
         size_t p_delayedNumToCache,
         std::vector<bool> p_delayedToCache,
         void* p_requests,
@@ -267,9 +203,8 @@ struct ListInfo
 
 
 void
-CacheLruSpannMt::refreshCacheBulkSingle(int p_tid) noexcept
+CacheLfuSpannMt::refreshCacheBulkSingle(int p_tid) noexcept
 {
-    
     size_t traceHandle = 0;
     if (m_enableLock)
         traceHandle = m_itemLock.getRefreshLock();
@@ -293,19 +228,26 @@ CacheLruSpannMt::refreshCacheBulkSingle(int p_tid) noexcept
         }
     }
 
+    // 
+    // Evict items until we have enough space for the new item
     size_t evictCount = 0;
-    while ((m_stats.getCurrentSize() + totalSize) > m_cacheCapacity)
+    while (m_stats.getCurrentSize() + totalSize > m_cacheCapacity)
     {
-        CacheItem<uintptr_t>* lruItem = &(m_usageList.back());
-        uint64_t decrSize = lruItem->getSize();
-        
-        m_cachedItems.erase(lruItem->getKey());
-        m_usageList.pop_back();
-        // m_stats.incrEvictCount(1);
+        uintptr_t evictKey = m_freqLruList[m_minFrequency].front();
+        m_freqLruList[m_minFrequency].pop_front();  // Pop least recently used
+
+        if (m_freqLruList.empty())
+            m_freqLruList.erase(m_minFrequency);
+
+        CacheItem<uintptr_t>& lruItem = (m_cachedItems[evictKey].m_item);
+        uint64_t decrSize = lruItem.getSize();
+
+        m_cachedItems.erase(evictKey);      
+        m_posInFreqList.erase(evictKey);
 
         evictCount++;
 
-        m_stats.decrCurrentSize(decrSize);
+        m_stats.decrCurrentSize(decrSize);        
     }
 
     m_stats.incrEvictCount(evictCount);
@@ -319,16 +261,35 @@ CacheLruSpannMt::refreshCacheBulkSingle(int p_tid) noexcept
             ListInfo* listInfo = (ListInfo*)(requests[i].m_payload);
             uintptr_t key = static_cast<uintptr_t>(requests[i].m_offset) + listInfo->pageOffset;
             
-            m_usageList.emplace_front(key, reinterpret_cast<uint8_t*>(requests[i].m_buffer), requests[i].m_readSize);
-            m_cachedItems[key] = m_usageList.begin();
+            // m_cachedItems[key] = std::pair<uintptr_t, CacheItemWrapper>(
+            //     key, CacheItemWrapper(CacheItem<uintptr_t>(key, reinterpret_cast<uint8_t*>(requests[i].m_buffer), requests[i].m_readSize))
+            // );
+
+            // m_cachedItems[p_key] = std::pair<uintptr_t, CacheItemWrapper>(
+            //     p_key, CacheItemWrapper(CacheItem<uintptr_t>(p_key, p_object, p_size))
+            // );   
+
+            m_cachedItems.insert(
+                std::make_pair(
+                    key, 
+                    CacheItemWrapper(CacheItem<uintptr_t>(key, reinterpret_cast<uint8_t*>(requests[i].m_buffer), requests[i].m_readSize))
+                )
+            );
+            
+            m_minFrequency = 1;
+            m_freqLruList[m_minFrequency].push_back(key);
+            m_posInFreqList[key] = --m_freqLruList[m_minFrequency].end();
 
             m_stats.incrCurrentSize(requests[i].m_readSize);
         }
     }
-
+    
+    
     // std::cout << "cursz: " << m_stats.getCurrentSize() << std::endl;
 
     double localHitRatio = (localHits * 1.0) / frontDelayed.m_delayedToCache->size();
+
+    // std::cout << "local count: " <<  localHits << ", over " << frontDelayed.m_delayedToCache->size() << ", local HR: "<< localHitRatio << "\n";
 
     m_statTrace.emplace_back(
         m_stats.getHitCount(), m_stats.getMissCount(), m_stats.getEvictCount(), m_stats.getCurrentSize(), localHitRatio

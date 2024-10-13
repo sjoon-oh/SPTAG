@@ -69,7 +69,10 @@ namespace SPTAG {
             uint8_t* m_buffer;
             size_t m_size;
 
+            uint8_t m_etc;
+
         public:
+            CacheItem() noexcept;
             CacheItem(K, uint8_t*, size_t) noexcept;
             CacheItem(CacheItem&&) noexcept;
             virtual ~CacheItem() noexcept;
@@ -155,6 +158,14 @@ namespace SPTAG {
 
 
 // Cache Item
+template <class K>
+SPTAG::EXT::CacheItem<K>::CacheItem() noexcept
+    : m_size(0), m_key(0)
+{
+    m_buffer = nullptr;
+}
+
+
 template <class K>
 SPTAG::EXT::CacheItem<K>::CacheItem(K p_key, uint8_t* p_object, size_t p_size) noexcept
     : m_size(p_size), m_key(p_key)

@@ -22,14 +22,29 @@
  
 using namespace SPTAG;
 
+#define _CACHE_ENABLED_
+#if defined (_CACHE_ENABLED_)
+
 // Author: Sukjoon Oh (sjoon@kaist.ac.kr)
 // 
 // 
 #include "inc/Extension/CacheLruWeak.hh"
 #include "inc/Extension/CacheLruMt.hh"
 #include "inc/Extension/CacheFifoMt.hh"
+#include "inc/Extension/CacheLfuMt.hh"
+#include "inc/Extension/CacheCorrLfu.hh"
 
+#define _CACHE_CORRLFU_
+#if defined (_CACHE_FIFO_)
 extern std::unique_ptr<SPTAG::EXT::CacheFifoSpannMt> globalCache;
+#elif defined (_CACHE_LFU_)
+extern std::unique_ptr<SPTAG::EXT::CacheLfuSpannMt> globalCache;
+#elif defined (_CACHE_LRU_)
+extern std::unique_ptr<SPTAG::EXT::CacheLruSpannMt> globalCache;
+#elif defined (_CACHE_CORRLFU_)
+extern std::unique_ptr<SPTAG::EXT::CacheCorrLfu> globalCache;
+#endif
+#endif
 
 namespace SPTAG {
 	namespace SSDServing {
@@ -187,12 +202,18 @@ namespace SPTAG {
 				// Author: Sukjoon Oh (sjoon@kaist.ac.kr)
 				// Delay for blocks to be flushed.
 				
-
+#if defined (_CACHE_ENABLED_)
 				const size_t globalCacheSize = (cacheSize);
-
-				// globalCache.reset(new EXT::CacheLruSpannMt(globalCacheSize));
+#if defined (_CACHE_FIFO_)
 				globalCache.reset(new EXT::CacheFifoSpannMt(globalCacheSize, false));
-
+#elif defined (_CACHE_LFU_)
+				globalCache.reset(new EXT::CacheLfuSpannMt(globalCacheSize, false));
+#elif defined (_CACHE_LRU_)
+				globalCache.reset(new EXT::CacheLruSpannMt(globalCacheSize, false));
+#elif defined (_CACHE_CORRLFU_)
+				globalCache.reset(new EXT::CacheCorrLfu(globalCacheSize));
+#endif
+#endif
 				// sleep(40);
 
 #define DefineVectorValueType(Name, Type) \

@@ -9,12 +9,26 @@
 #include <utility>
 #include <iostream>
 
+#define _CACHE_ENABLED_
+#if defined (_CACHE_ENABLED_)
+
 #include "inc/Extension/CacheLruWeak.hh"
 #include "inc/Extension/CacheLruMt.hh"
 #include "inc/Extension/CacheFifoMt.hh"
+#include "inc/Extension/CacheLfuMt.hh"
+#include "inc/Extension/CacheCorrLfu.hh"
 
-
+#define _CACHE_CORRLFU_
+#if defined (_CACHE_FIFO_)
 std::unique_ptr<SPTAG::EXT::CacheFifoSpannMt> globalCache;
+#elif defined (_CACHE_LFU_)
+std::unique_ptr<SPTAG::EXT::CacheLfuSpannMt> globalCache;
+#elif defined (_CACHE_LRU_)
+std::unique_ptr<SPTAG::EXT::CacheLruSpannMt> globalCache;
+#elif defined (_CACHE_CORRLFU_)
+std::unique_ptr<SPTAG::EXT::CacheCorrLfu> globalCache;
+#endif
+#endif
 
 namespace SPTAG {
     namespace Helper {
