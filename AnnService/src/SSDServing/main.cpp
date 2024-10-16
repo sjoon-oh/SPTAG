@@ -28,21 +28,22 @@ using namespace SPTAG;
 // Author: Sukjoon Oh (sjoon@kaist.ac.kr)
 // 
 // 
+#include "inc/Extension/CacheCores.hh"
 #include "inc/Extension/CacheLruWeak.hh"
 #include "inc/Extension/CacheLruMt.hh"
 #include "inc/Extension/CacheFifoMt.hh"
 #include "inc/Extension/CacheLfuMt.hh"
-#include "inc/Extension/CacheCorrLfu.hh"
+#include "inc/Extension/Cache2Q.hh"
 
-#define _CACHE_CORRLFU_
+#define _CACHE_2Q_
 #if defined (_CACHE_FIFO_)
 extern std::unique_ptr<SPTAG::EXT::CacheFifoSpannMt> globalCache;
 #elif defined (_CACHE_LFU_)
 extern std::unique_ptr<SPTAG::EXT::CacheLfuSpannMt> globalCache;
 #elif defined (_CACHE_LRU_)
 extern std::unique_ptr<SPTAG::EXT::CacheLruSpannMt> globalCache;
-#elif defined (_CACHE_CORRLFU_)
-extern std::unique_ptr<SPTAG::EXT::CacheCorrLfu> globalCache;
+#elif defined (_CACHE_2Q_)
+extern std::unique_ptr<SPTAG::EXT::Cache2Q> globalCache;
 #endif
 #endif
 
@@ -210,8 +211,8 @@ namespace SPTAG {
 				globalCache.reset(new EXT::CacheLfuSpannMt(globalCacheSize, false));
 #elif defined (_CACHE_LRU_)
 				globalCache.reset(new EXT::CacheLruSpannMt(globalCacheSize, false));
-#elif defined (_CACHE_CORRLFU_)
-				globalCache.reset(new EXT::CacheCorrLfu(globalCacheSize));
+#elif defined (_CACHE_2Q_)
+				globalCache.reset(new EXT::Cache2Q(globalCacheSize));
 #endif
 #endif
 				// sleep(40);

@@ -3,26 +3,24 @@
 # cd build && make -j
 # cd ..
 
+# gdb -ex=run --args ./Release/ssdserving custom-configs/sift1m-search-only.ini 1073741824
+# exit
+
 # mv ./Release/ssdserving ./Release/ssdserving-cache
 rm trace/*.txt
 rm trace/*.csv
 
 exec_binary=(
-    "ssdserving-cache-corrlru-8-4"
-    "ssdserving-cache-corrlru-8-8"
-    "ssdserving-cache-corrlru-8-12"
-    "ssdserving-cache-corrlru-8-16"
-    "ssdserving-cache-corrlru-8-32"
+    # "ssdserving-cache-corrlru-4-2"
     # "ssdserving-cache-corrlru-4-4"
     # "ssdserving-cache-corrlru-4-8"
-    "ssdserving-cache-corrlru-4-12"
-    "ssdserving-cache-corrlru-4-16"
-    "ssdserving-cache-corrlru-4-32"
-    # "ssdserving-cache-corrlru-16"
+    # "ssdserving-cache-corrlru-8-2"
+    # "ssdserving-cache-corrlru-8-4"
+    # "ssdserving-cache-corrlru-8-8"
     # "ssdserving-cache-fifo"
     # "ssdserving-cache-lfu"
     # "ssdserving-cache-lru"
-    # "ssdserving"
+    "ssdserving"
 )
 
 cache_size=(
@@ -37,7 +35,7 @@ cache_size=(
     "8gb:8589934592"
     "16gb:17179869184"
     "32gb:34359738368"
-    # "48gb:51539607552"
+    "48gb:51539607552"
     # "56gb:60129542144"
     # "60gb:64424509440"
     # "60.5gb:64961380352"
@@ -81,7 +79,7 @@ for bin in "${exec_binary[@]}"; do
             ./Release/${bin} custom-configs/spacev1b-search-only-log-mt-t${nthread}.ini ${size_i} > trace/spacev1b-out-${size_h}-mt-${nthread}.txt
             # ./Release/${bin} custom-configs/sift1m-search-only-mt-t${nthread}.ini ${size_i} > trace/sift1m-out-${size_h}-mt-${nthread}.txt
             
-            # gdb -ex=run --args ./Release/${bin} custom-configs/sift1m-search-only-mt-t${nthread}.ini ${size_i}
+            # gdb -ex=run --args ./Release/ssdserving custom-configs/sift1m-search-only-mt-t${nthread}.ini ${size_i}
 
             wait
              

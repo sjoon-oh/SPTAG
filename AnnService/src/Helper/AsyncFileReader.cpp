@@ -16,17 +16,17 @@
 #include "inc/Extension/CacheLruMt.hh"
 #include "inc/Extension/CacheFifoMt.hh"
 #include "inc/Extension/CacheLfuMt.hh"
-#include "inc/Extension/CacheCorrLfu.hh"
+#include "inc/Extension/Cache2Q.hh"
 
-#define _CACHE_CORRLFU_
+#define _CACHE_2Q_
 #if defined (_CACHE_FIFO_)
 std::unique_ptr<SPTAG::EXT::CacheFifoSpannMt> globalCache;
 #elif defined (_CACHE_LFU_)
 std::unique_ptr<SPTAG::EXT::CacheLfuSpannMt> globalCache;
 #elif defined (_CACHE_LRU_)
 std::unique_ptr<SPTAG::EXT::CacheLruSpannMt> globalCache;
-#elif defined (_CACHE_CORRLFU_)
-std::unique_ptr<SPTAG::EXT::CacheCorrLfu> globalCache;
+#elif defined (_CACHE_2Q_)
+std::unique_ptr<SPTAG::EXT::Cache2Q> globalCache;
 #endif
 #endif
 

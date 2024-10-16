@@ -92,6 +92,7 @@ if (NOT LIBRARYONLY)
     target_link_libraries(quantizer ${Boost_LIBRARIES} SPTAGLibStatic)
 
     install(TARGETS server client aggregator indexbuilder indexsearcher quantizer
+    # install(TARGETS aggregator indexbuilder indexsearcher quantizer
       RUNTIME DESTINATION bin
       ARCHIVE DESTINATION lib
       LIBRARY DESTINATION lib)
