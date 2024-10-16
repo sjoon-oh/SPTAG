@@ -23,12 +23,13 @@
 #include "inc/Extension/CacheFifoMt.hh"
 #include "inc/Extension/CacheLfuMt.hh"
 #include "inc/Extension/Cache2Q.hh"
+#include "inc/Extension/CacheLfu2.hh"
 
-#define _CACHE_2Q_
+#define _CACHE_LFU_
 #if defined (_CACHE_FIFO_)
 extern std::unique_ptr<SPTAG::EXT::CacheFifoSpannMt> globalCache;
 #elif defined (_CACHE_LFU_)
-extern std::unique_ptr<SPTAG::EXT::CacheLfuSpannMt> globalCache;
+extern std::unique_ptr<SPTAG::EXT::CacheLfu2> globalCache;
 #elif defined (_CACHE_LRU_)
 extern std::unique_ptr<SPTAG::EXT::CacheLruSpannMt> globalCache;
 #elif defined (_CACHE_2Q_)
@@ -413,31 +414,31 @@ namespace SPTAG {
                 //
                 // Record offset list
 
-                SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nExporting access offset list...\n");
-                {   
-                    std::string filePath("trace/");
-                    std::string traceName("offset-access-trace.csv");
+                // SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nExporting access offset list...\n");
+                // {   
+                //     std::string filePath("trace/");
+                //     std::string traceName("offset-access-trace.csv");
 
-                    std::string fileName = filePath + traceName;
+                //     std::string fileName = filePath + traceName;
 
-                    std::ofstream fileOffsetAccessTrace(fileName);
+                //     std::ofstream fileOffsetAccessTrace(fileName);
 
-                    if (!fileOffsetAccessTrace)
-                        SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nUnable to open the offset-access-trace.csv\n");
+                //     if (!fileOffsetAccessTrace)
+                //         SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nUnable to open the offset-access-trace.csv\n");
                     
-                    else
-                    {   
-                        // Write start.
-                        for (auto& ss: stats)
-                        {
-                            for (uint64_t offset: ss.m_offsetList)
-                                fileOffsetAccessTrace << offset << "\t";
-                            fileOffsetAccessTrace << std::endl;
-                        }
+                //     else
+                //     {   
+                //         // Write start.
+                //         for (auto& ss: stats)
+                //         {
+                //             for (uint64_t offset: ss.m_offsetList)
+                //                 fileOffsetAccessTrace << offset << "\t";
+                //             fileOffsetAccessTrace << std::endl;
+                //         }
 
-                        fileOffsetAccessTrace.close();
-                    }
-                }
+                //         fileOffsetAccessTrace.close();
+                //     }
+                // }
 
 #if defined (_CACHE_ENABLED_)
                 SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nExporting cache trace...\n");

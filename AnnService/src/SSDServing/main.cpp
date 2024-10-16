@@ -33,13 +33,14 @@ using namespace SPTAG;
 #include "inc/Extension/CacheLruMt.hh"
 #include "inc/Extension/CacheFifoMt.hh"
 #include "inc/Extension/CacheLfuMt.hh"
+#include "inc/Extension/CacheLfu2.hh"
 #include "inc/Extension/Cache2Q.hh"
 
-#define _CACHE_2Q_
+#define _CACHE_LFU_
 #if defined (_CACHE_FIFO_)
 extern std::unique_ptr<SPTAG::EXT::CacheFifoSpannMt> globalCache;
 #elif defined (_CACHE_LFU_)
-extern std::unique_ptr<SPTAG::EXT::CacheLfuSpannMt> globalCache;
+extern std::unique_ptr<SPTAG::EXT::CacheLfu2> globalCache;
 #elif defined (_CACHE_LRU_)
 extern std::unique_ptr<SPTAG::EXT::CacheLruSpannMt> globalCache;
 #elif defined (_CACHE_2Q_)
@@ -208,7 +209,7 @@ namespace SPTAG {
 #if defined (_CACHE_FIFO_)
 				globalCache.reset(new EXT::CacheFifoSpannMt(globalCacheSize, false));
 #elif defined (_CACHE_LFU_)
-				globalCache.reset(new EXT::CacheLfuSpannMt(globalCacheSize, false));
+				globalCache.reset(new EXT::CacheLfu2(globalCacheSize, false));
 #elif defined (_CACHE_LRU_)
 				globalCache.reset(new EXT::CacheLruSpannMt(globalCacheSize, false));
 #elif defined (_CACHE_2Q_)

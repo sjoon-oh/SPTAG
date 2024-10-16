@@ -1170,89 +1170,89 @@ namespace SPTAG
                 // Author: Sukjoon Oh (sjoon@kaist.ac.kr), added
                 //  Note: Extract file layout when loading heading info.
                 //
-                std::string filePath("trace/");
-                std::string traceName("layout-info.csv");
+//                 std::string filePath("trace/");
+//                 std::string traceName("layout-info.csv");
                 
-#include <chrono>
-    #if defined(__GNUC__) && defined(__cplusplus)
-    #if (__GNUC__ >= 10)
-                std::string fileName(std::format("{}{}", filePath, fileName));
-    #else
-                std::string fileName = filePath + traceName;
-    #endif
-#endif
-                std::ofstream fileLayoutInfo(fileName);
+// #include <chrono>
+//     #if defined(__GNUC__) && defined(__cplusplus)
+//     #if (__GNUC__ >= 10)
+//                 std::string fileName(std::format("{}{}", filePath, fileName));
+//     #else
+//                 std::string fileName = filePath + traceName;
+//     #endif
+// #endif
+//                 std::ofstream fileLayoutInfo(fileName);
 
-                if (!fileLayoutInfo) 
-                {
-                    SPTAGLIB_LOG(Helper::LogLevel::LL_Error, 
-                    "\nFile open for export raw failed: layout-info.csv\n");
-                }
+//                 if (!fileLayoutInfo) 
+//                 {
+//                     SPTAGLIB_LOG(Helper::LogLevel::LL_Error, 
+//                     "\nFile open for export raw failed: layout-info.csv\n");
+//                 }
 
 
-                for (int i = 0; i < m_listCount; ++i)
-                {
-                    ListInfo* listInfo = &(p_listInfos[totalListCount + i]);
+//                 for (int i = 0; i < m_listCount; ++i)
+//                 {
+//                     ListInfo* listInfo = &(p_listInfos[totalListCount + i]);
 
-                    if (m_enableDataCompression)
-                    {
-                        if (ptr->ReadBinary(sizeof(listInfo->listTotalBytes), reinterpret_cast<char*>(&(listInfo->listTotalBytes))) != sizeof(listInfo->listTotalBytes)) {
-                            SPTAGLIB_LOG(Helper::LogLevel::LL_Error, "Failed to read head info file!\n");
-                            throw std::runtime_error("Failed read file in LoadingHeadInfo");
-                        }
-                    }
-                    if (ptr->ReadBinary(sizeof(pageNum), reinterpret_cast<char*>(&(pageNum))) != sizeof(pageNum)) {
-                        SPTAGLIB_LOG(Helper::LogLevel::LL_Error, "Failed to read head info file!\n");
-                        throw std::runtime_error("Failed read file in LoadingHeadInfo");
-                    }
-                    if (ptr->ReadBinary(sizeof(listInfo->pageOffset), reinterpret_cast<char*>(&(listInfo->pageOffset))) != sizeof(listInfo->pageOffset)) {
-                        SPTAGLIB_LOG(Helper::LogLevel::LL_Error, "Failed to read head info file!\n");
-                        throw std::runtime_error("Failed read file in LoadingHeadInfo");
-                    }
-                    if (ptr->ReadBinary(sizeof(listInfo->listEleCount), reinterpret_cast<char*>(&(listInfo->listEleCount))) != sizeof(listInfo->listEleCount)) {
-                        SPTAGLIB_LOG(Helper::LogLevel::LL_Error, "Failed to read head info file!\n");
-                        throw std::runtime_error("Failed read file in LoadingHeadInfo");
-                    }
-                    if (ptr->ReadBinary(sizeof(listInfo->listPageCount), reinterpret_cast<char*>(&(listInfo->listPageCount))) != sizeof(listInfo->listPageCount)) {
-                        SPTAGLIB_LOG(Helper::LogLevel::LL_Error, "Failed to read head info file!\n");
-                        throw std::runtime_error("Failed read file in LoadingHeadInfo");
-                    }
-                    listInfo->listOffset = (static_cast<uint64_t>(m_listPageOffset + pageNum) << PageSizeEx);
-                    if (!m_enableDataCompression)
-                    {
-                        listInfo->listTotalBytes = listInfo->listEleCount * m_vectorInfoSize;
-                        listInfo->listEleCount = min(listInfo->listEleCount, (min(static_cast<int>(listInfo->listPageCount), p_postingPageLimit) << PageSizeEx) / m_vectorInfoSize);
-                        listInfo->listPageCount = static_cast<std::uint16_t>(ceil((m_vectorInfoSize * listInfo->listEleCount + listInfo->pageOffset) * 1.0 / (1 << PageSizeEx)));
-                    }
-                    totalListElementCount += listInfo->listEleCount;
-                    int pageCount = listInfo->listPageCount;
+//                     if (m_enableDataCompression)
+//                     {
+//                         if (ptr->ReadBinary(sizeof(listInfo->listTotalBytes), reinterpret_cast<char*>(&(listInfo->listTotalBytes))) != sizeof(listInfo->listTotalBytes)) {
+//                             SPTAGLIB_LOG(Helper::LogLevel::LL_Error, "Failed to read head info file!\n");
+//                             throw std::runtime_error("Failed read file in LoadingHeadInfo");
+//                         }
+//                     }
+//                     if (ptr->ReadBinary(sizeof(pageNum), reinterpret_cast<char*>(&(pageNum))) != sizeof(pageNum)) {
+//                         SPTAGLIB_LOG(Helper::LogLevel::LL_Error, "Failed to read head info file!\n");
+//                         throw std::runtime_error("Failed read file in LoadingHeadInfo");
+//                     }
+//                     if (ptr->ReadBinary(sizeof(listInfo->pageOffset), reinterpret_cast<char*>(&(listInfo->pageOffset))) != sizeof(listInfo->pageOffset)) {
+//                         SPTAGLIB_LOG(Helper::LogLevel::LL_Error, "Failed to read head info file!\n");
+//                         throw std::runtime_error("Failed read file in LoadingHeadInfo");
+//                     }
+//                     if (ptr->ReadBinary(sizeof(listInfo->listEleCount), reinterpret_cast<char*>(&(listInfo->listEleCount))) != sizeof(listInfo->listEleCount)) {
+//                         SPTAGLIB_LOG(Helper::LogLevel::LL_Error, "Failed to read head info file!\n");
+//                         throw std::runtime_error("Failed read file in LoadingHeadInfo");
+//                     }
+//                     if (ptr->ReadBinary(sizeof(listInfo->listPageCount), reinterpret_cast<char*>(&(listInfo->listPageCount))) != sizeof(listInfo->listPageCount)) {
+//                         SPTAGLIB_LOG(Helper::LogLevel::LL_Error, "Failed to read head info file!\n");
+//                         throw std::runtime_error("Failed read file in LoadingHeadInfo");
+//                     }
+//                     listInfo->listOffset = (static_cast<uint64_t>(m_listPageOffset + pageNum) << PageSizeEx);
+//                     if (!m_enableDataCompression)
+//                     {
+//                         listInfo->listTotalBytes = listInfo->listEleCount * m_vectorInfoSize;
+//                         listInfo->listEleCount = min(listInfo->listEleCount, (min(static_cast<int>(listInfo->listPageCount), p_postingPageLimit) << PageSizeEx) / m_vectorInfoSize);
+//                         listInfo->listPageCount = static_cast<std::uint16_t>(ceil((m_vectorInfoSize * listInfo->listEleCount + listInfo->pageOffset) * 1.0 / (1 << PageSizeEx)));
+//                     }
+//                     totalListElementCount += listInfo->listEleCount;
+//                     int pageCount = listInfo->listPageCount;
 
-                    // Author: Sukjoon Oh (sjoon@kaist.ac.kr), added
-                    //
-                    if (fileLayoutInfo) 
-                    {
-                        fileLayoutInfo  << listInfo->listOffset << "\t"
-                                        << listInfo->pageOffset << "\t"
-                                        << listInfo->listTotalBytes << "\t"
-                                        << listInfo->listEleCount << "\t"
-                                        << listInfo->listPageCount << "\n";
-                    }
+//                     // Author: Sukjoon Oh (sjoon@kaist.ac.kr), added
+//                     //
+//                     if (fileLayoutInfo) 
+//                     {
+//                         fileLayoutInfo  << listInfo->listOffset << "\t"
+//                                         << listInfo->pageOffset << "\t"
+//                                         << listInfo->listTotalBytes << "\t"
+//                                         << listInfo->listEleCount << "\t"
+//                                         << listInfo->listPageCount << "\n";
+//                     }
 
-                    if (pageCount > 1)
-                    {
-                        ++biglistCount;
-                        biglistElementCount += listInfo->listEleCount;
-                    }
+//                     if (pageCount > 1)
+//                     {
+//                         ++biglistCount;
+//                         biglistElementCount += listInfo->listEleCount;
+//                     }
 
-                    if (pageCountDist.count(pageCount) == 0)
-                    {
-                        pageCountDist[pageCount] = 1;
-                    }
-                    else
-                    {
-                        pageCountDist[pageCount] += 1;
-                    }
-                }
+//                     if (pageCountDist.count(pageCount) == 0)
+//                     {
+//                         pageCountDist[pageCount] = 1;
+//                     }
+//                     else
+//                     {
+//                         pageCountDist[pageCount] += 1;
+//                     }
+//                 }
 
                 // Author: Sukjoon Oh (sjoon@kaist.ac.kr), added
                 //
