@@ -436,7 +436,6 @@ namespace SPTAG
                 size_t localEvictCounts = 0;
                 while ((m_currentSize + p_newSize) > m_capacity)
                 {
-                    
                     key_t evictKey = (*m_freqList)[m_minFreq].front();
                     (*m_freqList)[m_minFreq].pop_front();                // Pop least recently used
 
@@ -445,9 +444,11 @@ namespace SPTAG
                     if ((*m_freqList)[m_minFreq].empty())
                     {
                         m_freqList->erase(m_minFreq);
-                        key_t nextMinKey = (*(m_freqList->upper_bound(m_minFreq))).second.front();
 
-                        m_minFreq = nextMinKey;
+                        auto nextMinKeyItor = m_freqList->upper_bound(m_minFreq);
+                        key_t nextMinKey = (*nextMinKeyItor).first;
+
+                        m_minFreq = nextMinKey;                         
                     }
 
                     eraseItemFromLists(evictKey);

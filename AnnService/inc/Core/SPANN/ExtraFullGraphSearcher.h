@@ -389,6 +389,13 @@ namespace SPTAG
                 timeStart = std::chrono::steady_clock::now();
                 BatchReadFileAsync(m_indexFiles, (p_exWorkSpace->m_diskRequests).data(), postingListCount, p_tid);
                 timeEnd = std::chrono::steady_clock::now();
+
+                // // 
+                // // Author : Sukjoon Oh (sjoon@kaist.ac.kr), added
+                // #define getElapsedMsIndependent(start, end) \
+                //     ((std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() * 1.0) / 1000.000)
+
+                // globalCache->recordLatencyTotalBatchRead(getElapsedMsIndependent(timeStart, timeEnd));
 #else
                 while (unprocessed > 0)
                 {
@@ -1170,24 +1177,24 @@ namespace SPTAG
                 // Author: Sukjoon Oh (sjoon@kaist.ac.kr), added
                 //  Note: Extract file layout when loading heading info.
                 //
-                std::string filePath("trace/");
-                std::string traceName("layout-info.csv");
+//                 std::string filePath("trace/");
+//                 std::string traceName("layout-info.csv");
                 
-#include <chrono>
-    #if defined(__GNUC__) && defined(__cplusplus)
-    #if (__GNUC__ >= 10)
-                std::string fileName(std::format("{}{}", filePath, fileName));
-    #else
-                std::string fileName = filePath + traceName;
-    #endif
-#endif
-                std::ofstream fileLayoutInfo(fileName);
+// #include <chrono>
+//     #if defined(__GNUC__) && defined(__cplusplus)
+//     #if (__GNUC__ >= 10)
+//                 std::string fileName(std::format("{}{}", filePath, fileName));
+//     #else
+//                 std::string fileName = filePath + traceName;
+//     #endif
+// #endif
+//                 std::ofstream fileLayoutInfo(fileName);
 
-                if (!fileLayoutInfo) 
-                {
-                    SPTAGLIB_LOG(Helper::LogLevel::LL_Error, 
-                    "\nFile open for export raw failed: layout-info.csv\n");
-                }
+//                 if (!fileLayoutInfo) 
+//                 {
+//                     SPTAGLIB_LOG(Helper::LogLevel::LL_Error, 
+//                     "\nFile open for export raw failed: layout-info.csv\n");
+//                 }
 
 
                 for (int i = 0; i < m_listCount; ++i)
@@ -1229,14 +1236,14 @@ namespace SPTAG
 
                     // Author: Sukjoon Oh (sjoon@kaist.ac.kr), added
                     //
-                    if (fileLayoutInfo) 
-                    {
-                        fileLayoutInfo  << listInfo->listOffset << "\t"
-                                        << listInfo->pageOffset << "\t"
-                                        << listInfo->listTotalBytes << "\t"
-                                        << listInfo->listEleCount << "\t"
-                                        << listInfo->listPageCount << "\n";
-                    }
+                    // if (fileLayoutInfo) 
+                    // {
+                    //     fileLayoutInfo  << listInfo->listOffset << "\t"
+                    //                     << listInfo->pageOffset << "\t"
+                    //                     << listInfo->listTotalBytes << "\t"
+                    //                     << listInfo->listEleCount << "\t"
+                    //                     << listInfo->listPageCount << "\n";
+                    // }
 
                     if (pageCount > 1)
                     {
@@ -1256,8 +1263,8 @@ namespace SPTAG
 
                 // Author: Sukjoon Oh (sjoon@kaist.ac.kr), added
                 //
-                if (fileLayoutInfo) 
-                    fileLayoutInfo.close();
+                // if (fileLayoutInfo) 
+                //     fileLayoutInfo.close();
 
                 if (m_enableDataCompression && m_enableDictTraining)
                 {

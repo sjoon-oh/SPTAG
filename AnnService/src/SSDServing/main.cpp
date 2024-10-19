@@ -33,17 +33,22 @@ using namespace SPTAG;
 #include "inc/Extension/CacheLruMt.hh"
 #include "inc/Extension/CacheFifoMt.hh"
 #include "inc/Extension/CacheLfuMt.hh"
+#include "inc/Extension/CacheLfu2.hh"
 #include "inc/Extension/Cache2Q.hh"
 
-#define _CACHE_2Q_
+#include "inc/Extension/ReadBatchCache.hh"
+
+#define _CACHE_BATCH_READ_
 #if defined (_CACHE_FIFO_)
 extern std::unique_ptr<SPTAG::EXT::CacheFifoSpannMt> globalCache;
 #elif defined (_CACHE_LFU_)
-extern std::unique_ptr<SPTAG::EXT::CacheLfuSpannMt> globalCache;
+extern std::unique_ptr<SPTAG::EXT::CacheLfu2> globalCache;
 #elif defined (_CACHE_LRU_)
 extern std::unique_ptr<SPTAG::EXT::CacheLruSpannMt> globalCache;
 #elif defined (_CACHE_2Q_)
 extern std::unique_ptr<SPTAG::EXT::Cache2Q> globalCache;
+#elif defined (_CACHE_BATCH_READ_)
+extern std::unique_ptr<SPTAG::EXT::ReadBatchCache> globalCache;
 #endif
 #endif
 
@@ -208,12 +213,19 @@ namespace SPTAG {
 #if defined (_CACHE_FIFO_)
 				globalCache.reset(new EXT::CacheFifoSpannMt(globalCacheSize, false));
 #elif defined (_CACHE_LFU_)
-				globalCache.reset(new EXT::CacheLfuSpannMt(globalCacheSize, false));
+				globalCache.reset(new EXT::CacheLfu2(globalCacheSize, false));
 #elif defined (_CACHE_LRU_)
 				globalCache.reset(new EXT::CacheLruSpannMt(globalCacheSize, false));
 #elif defined (_CACHE_2Q_)
 				globalCache.reset(new EXT::Cache2Q(globalCacheSize));
+#elif defined (_CACHE_BATCH_READ_)
+				const size_t cacheSize1 = (globalCacheSize / 2);
+				const size_t cacheSize2 = (globalCacheSize / 2);
+
+				globalCache.reset(new EXT::ReadBatchCache(cacheSize1, cacheSize2));
 #endif
+
+
 #endif
 				// sleep(40);
 

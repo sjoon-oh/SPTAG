@@ -23,16 +23,21 @@
 #include "inc/Extension/CacheFifoMt.hh"
 #include "inc/Extension/CacheLfuMt.hh"
 #include "inc/Extension/Cache2Q.hh"
+#include "inc/Extension/CacheLfu2.hh"
 
-#define _CACHE_2Q_
+#include "inc/Extension/ReadBatchCache.hh"
+
+#define _CACHE_BATCH_READ_
 #if defined (_CACHE_FIFO_)
 extern std::unique_ptr<SPTAG::EXT::CacheFifoSpannMt> globalCache;
 #elif defined (_CACHE_LFU_)
-extern std::unique_ptr<SPTAG::EXT::CacheLfuSpannMt> globalCache;
+extern std::unique_ptr<SPTAG::EXT::CacheLfu2> globalCache;
 #elif defined (_CACHE_LRU_)
 extern std::unique_ptr<SPTAG::EXT::CacheLruSpannMt> globalCache;
 #elif defined (_CACHE_2Q_)
 extern std::unique_ptr<SPTAG::EXT::Cache2Q> globalCache;
+#elif defined (_CACHE_BATCH_READ_)
+extern std::unique_ptr<SPTAG::EXT::ReadBatchCache> globalCache;
 #endif
 #endif
 
@@ -187,13 +192,23 @@ namespace SPTAG {
                                 std::chrono::steady_clock::time_point timeEnd;
 
                                 timeStart = std::chrono::steady_clock::now();
-                                
+
+#ifndef _CACHE_BATCH_READ_                                   
                                 globalCache->refreshCacheBulkSingle(i);
+#else
+                                globalCache->processDelayedUpdates();
+#endif
 
                                 timeEnd = std::chrono::steady_clock::now();
 
                                 // globalCache->recordLatencySet(getElapsedMsIndependent(timeStart, timeEnd));
+#ifndef _CACHE_BATCH_READ_                              
                                 globalCache->recordStatTrace();
+#else
+
+                                globalCache->recordCurrentStat();
+#endif
+
 
 #pragma endregion Real Searches
 
@@ -276,7 +291,9 @@ namespace SPTAG {
 
                 // 
                 // Author : Sukjoon Oh (sjoon@kaist.ac.kr), added
+#ifndef _CACHE_BATCH_READ_                
                 globalCache->resetStat();
+#endif
 
                 SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "Start loading QuerySet...\n");
                 std::shared_ptr<Helper::ReaderOptions> queryOptions(new Helper::ReaderOptions(p_opts.m_valueType, p_opts.m_dim, p_opts.m_queryType, p_opts.m_queryDelimiter));
@@ -413,35 +430,37 @@ namespace SPTAG {
                 //
                 // Record offset list
 
-                SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nExporting access offset list...\n");
-                {   
-                    std::string filePath("trace/");
-                    std::string traceName("offset-access-trace.csv");
+                // SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nExporting access offset list...\n");
+                // {   
+                //     std::string filePath("trace/");
+                //     std::string traceName("offset-access-trace.csv");
 
-                    std::string fileName = filePath + traceName;
+                //     std::string fileName = filePath + traceName;
 
-                    std::ofstream fileOffsetAccessTrace(fileName);
+                //     std::ofstream fileOffsetAccessTrace(fileName);
 
-                    if (!fileOffsetAccessTrace)
-                        SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nUnable to open the offset-access-trace.csv\n");
+                //     if (!fileOffsetAccessTrace)
+                //         SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nUnable to open the offset-access-trace.csv\n");
                     
-                    else
-                    {   
-                        // Write start.
-                        for (auto& ss: stats)
-                        {
-                            for (uint64_t offset: ss.m_offsetList)
-                                fileOffsetAccessTrace << offset << "\t";
-                            fileOffsetAccessTrace << std::endl;
-                        }
+                //     else
+                //     {   
+                //         // Write start.
+                //         for (auto& ss: stats)
+                //         {
+                //             for (uint64_t offset: ss.m_offsetList)
+                //                 fileOffsetAccessTrace << offset << "\t";
+                //             fileOffsetAccessTrace << std::endl;
+                //         }
 
-                        fileOffsetAccessTrace.close();
-                    }
-                }
+                //         fileOffsetAccessTrace.close();
+                //     }
+                // }
 
 #if defined (_CACHE_ENABLED_)
+
                 SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nExporting cache trace...\n");
                 {
+#ifndef _CACHE_BATCH_READ_                    
                     std::string filePath("trace/");
                     std::string traceName("cache-trace.csv");
 
@@ -551,6 +570,11 @@ namespace SPTAG {
                         fileCacheRefreshLockLatency << std::endl;
                         fileCacheRefreshLockLatency.close();
                     }
+#else
+                    globalCache->exportStatToFile("trace/cache-trace.csv");
+
+                    std::string filePath, traceName, fileName;
+#endif
 #endif
 
                     filePath = "trace/";

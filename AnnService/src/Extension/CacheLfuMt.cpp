@@ -1,4 +1,3 @@
-#pragma once
 // Author: Sukjoon Oh (sjoon@kaist.ac.kr)
 // 
 
