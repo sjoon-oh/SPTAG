@@ -13,13 +13,14 @@
 #include <map>
 #include <list>
 #include <unordered_map>
+#include <unordered_set>
 
 #include <cstdio>
 
 #include "inc/Core/SearchQuery.h"
 // #include "inc/Extension/CacheCores.hh"
 
-// #define DEBUG
+// #define BATCH_READ_CACHE_DEBUG
 #ifdef BATCH_READ_CACHE_DEBUG
     #define PRINT__     debug_print
 #else
@@ -37,13 +38,24 @@ namespace SPTAG
         using distance_t    = float;
         using key_t         = uintptr_t;
 
+        struct ListInfo
+        {
+            std::size_t     listTotalBytes = 0;
+            int             listEleCount = 0;
+            std::uint16_t   listPageCount = 0;
+            std::uint64_t   listOffset = 0;
+            std::uint16_t   pageOffset = 0;
+        };
+
         class PostingList
         {
         private:
             // Main 
-            key_t   m_offset;
-            uint8_t* m_buffer;
-            size_t  m_size;
+            key_t       m_offset;
+            uint8_t*    m_buffer;
+            size_t      m_size;
+
+            struct ListInfo m_listInfo;
 
         public:
             PostingList() noexcept
@@ -52,18 +64,31 @@ namespace SPTAG
                 m_buffer = nullptr;
             }
             
-            PostingList(key_t p_offset, uint8_t* p_object, size_t p_size) noexcept
+            PostingList(key_t p_offset, uint8_t* p_object, size_t p_size, struct ListInfo& p_listInfo) noexcept
                 : m_offset(p_offset), m_size(p_size)
             {
                 // m_buffer = new uint8_t[m_size];
                 m_buffer = (uint8_t*)aligned_alloc(4096, m_size);
                 std::memcpy(m_buffer, p_object, m_size); // copy
+
+                m_listInfo.listTotalBytes = p_listInfo.listTotalBytes;
+                m_listInfo.listEleCount = p_listInfo.listEleCount;
+                m_listInfo.listPageCount = p_listInfo.listPageCount;
+                m_listInfo.listOffset = p_listInfo.listOffset;
+                m_listInfo.pageOffset = p_listInfo.pageOffset;
+
             }
 
             PostingList(PostingList&& p_other) noexcept
                 : m_size(p_other.m_size), m_offset(p_other.m_offset), m_buffer(p_other.m_buffer)
             {
                 p_other.m_buffer = nullptr;
+                
+                m_listInfo.listTotalBytes = p_other.m_listInfo.listTotalBytes;
+                m_listInfo.listEleCount = p_other.m_listInfo.listEleCount;
+                m_listInfo.listPageCount = p_other.m_listInfo.listPageCount;
+                m_listInfo.listOffset = p_other.m_listInfo.listOffset;
+                m_listInfo.pageOffset = p_other.m_listInfo.pageOffset;
             }
 
             virtual ~PostingList() noexcept
@@ -85,6 +110,11 @@ namespace SPTAG
             const size_t getSize() noexcept
             {
                 return m_size;
+            }
+
+            struct ListInfo* getListInfo() noexcept
+            {
+                return &m_listInfo;
             }
         };
 
@@ -356,10 +386,10 @@ namespace SPTAG
                  m_currentSize += p_size;
             }
 
-            void insertItem(key_t p_key, uint8_t* p_buffer, size_t p_size) noexcept
+            void insertItem(key_t p_key, uint8_t* p_buffer, size_t p_size, struct ListInfo& p_listInfo) noexcept
             {
                 m_cached->insert(
-                    std::make_pair(p_key, PostingListWrapper(PostingList(p_key, p_buffer, p_size)))
+                    std::make_pair(p_key, PostingListWrapper(PostingList(p_key, p_buffer, p_size, p_listInfo)))
                 );
 
                 insertItemToLists(p_key, p_size);
@@ -611,9 +641,14 @@ namespace SPTAG
 
             // 
             // Calls at every single posting list
-            size_t getCachedReadBatch(key_t p_key, std::vector<PostingList*>& p_observedBatch)
+            size_t getCachedReadBatch(
+                key_t p_key, 
+                std::vector<PostingList*>& p_observedBatch, 
+                std::unordered_set<key_t>& p_isBatchFetched)
             {
                 key_t batchId = 0;
+
+                PRINT__(" > Query: %ld\n", p_key);
 
                 // If it is already cached (both LFU and in the batch)
                 if (isCachedLfu(p_key)) 
@@ -624,37 +659,56 @@ namespace SPTAG
                         batchId = m_postingListToBatchId[p_key];
                         ReadBatch& readBatch = (*m_readBatchCached)[batchId];
 
-                        PRINT__(" > Preparing to return batch ID: %ld, (Size: %ld)\n", batchId, readBatch.getKeys().size());
-#ifdef BATCH_READ_CACHE_DEBUG
-                        for (auto& elem: readBatch.getKeys())
-                        {
-                            PRINT__("%ld, ", elem.first);
-                        }
-#endif
-                        PRINT__("\n");
+                        size_t returnBatchSize;
+
+//                         PRINT__(" > Preparing to return batch ID: %ld, (Size: %ld)\n", batchId, readBatch.getKeys().size());
+// #ifdef BATCH_READ_CACHE_DEBUG
+//                         for (auto& elem: readBatch.getKeys())
+//                         {
+//                             PRINT__("%ld, ", elem.first);
+//                         }
+// #endif
+//                         PRINT__("\n");
 
                         // If the target key, place it at the front
                         // p_observedBatch.emplace_front(
                         //     &((*m_postingListCached)[p_key].m_item)
                         // );
-
-                        for (auto& item: readBatch.getKeys())
+                        
+                        // Case when the batch id is not found
+                        if (p_isBatchFetched.find(batchId) == p_isBatchFetched.end())
                         {
-                            // Skip if the target key, since it will be always in front of the list.
-                            if (item.first != p_key)
+                            for (auto& item: readBatch.getKeys())
                             {
-                                p_observedBatch.emplace_back(
-                                    &((*m_postingListCached)[item.first].m_item)
-                                );
-
+                                // Skip if the target key, since it will be always in front of the list.
+                                if (item.first != p_key)
+                                {
+                                    p_observedBatch.emplace_back(
+                                        &((*m_postingListCached)[item.first].m_item)
+                                    );
+                                }
                             }
+
+                            p_isBatchFetched.insert(batchId);
+
+                            // m_delayedUpdates.emplace_back(p_key, BATCH_CACHED);
+                        }
+                        else
+                        {
+                            PRINT__(" > The batch ID (%ld) is previously fetched.\n", batchId);
+
+                            // If it is previously found, just return this one.
+                            // p_observedBatch.emplace_back(
+                            //     &((*m_postingListCached)[p_key].m_item)
+                            // );
+                            // m_delayedUpdates.emplace_back(p_key, BATCH_CACHED_NOREMOVE);
                         }
 
                         p_observedBatch.emplace_back(
                             &((*m_postingListCached)[p_key].m_item)
                         );
 
-                        PRINT__(" > Returning this... (Batch size: %ld)\n", readBatch.getBatchSize());
+                        PRINT__(" > Returning this... (Batch ID: %ld, Batch size: %ld)\n", batchId, readBatch.getBatchSize());
 #ifdef BATCH_READ_CACHE_DEBUG
                         for (auto& elem: p_observedBatch)
                         {
@@ -736,26 +790,21 @@ namespace SPTAG
                         {
                             // Make it cache, record it as a new read-batch.
                             //  May be recorded as the uncached ones, but it might have formed a batch in the previous loop.
-                            struct ListInfo
-                            {
-                                std::size_t     listTotalBytes = 0;
-                                int             listEleCount = 0;
-                                std::uint16_t   listPageCount = 0;
-                                std::uint64_t   listOffset = 0;
-                                std::uint16_t   pageOffset = 0;
-                            };
-
                             SPTAG::Helper::AsyncReadRequest* requests = 
                                 (SPTAG::Helper::AsyncReadRequest*)m_delayedRequests;
+
+                            struct ListInfo* listInfo = (ListInfo*)(requests[index].m_payload);
 
                             // 1. Record to global cache.
                             m_postingListCached->insert(
                                 std::make_pair(
                                     key, 
                                     PostingListWrapper(PostingList(
-                                        key, 
-                                        reinterpret_cast<uint8_t*>(requests[index].m_buffer), 
-                                        requests[index].m_readSize)))
+                                            key, 
+                                            reinterpret_cast<uint8_t*>(requests[index].m_buffer), 
+                                            requests[index].m_readSize,
+                                            *listInfo
+                                        )))
                             );
 
                             // 2. Give it a new batch ID
@@ -772,6 +821,16 @@ namespace SPTAG
 
                         case BATCH_CACHED: // Case 1
                         {
+                                                        // May have been moved to the LRU.
+                            // Skip if that is the case.
+                            if (!isCachedBatch(key))
+                            {
+                                PRINT__(" > Skipping %ld from batch: is map has the key(%ld)\n", 
+                                    key, isCachedBatch(key)); 
+                                
+                                break;
+                            }
+
                             // Case when hit while in read-batch (FIFO).
                             //  Move it to the upper LFU cache the posting list. 
                             key_t existingBatchId = m_postingListToBatchId[key];

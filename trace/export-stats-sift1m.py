@@ -37,13 +37,14 @@ def analysis_cache_trace_csv(filename):
     curr_size = data[3]
     per_query_hit_ratio = data[4]
 
-    # Must extract over 10000
+    # Must extract over start_index
+    start_index = 0
 
-    hit_counts = np.sort(hit_counts[10000:])
-    miss_counts = np.sort(miss_counts[10000:])
-    evict_counts = np.sort(evict_counts[10000:])
-    curr_size = np.sort(curr_size[10000:])
-    per_query_hit_ratio = np.sort(per_query_hit_ratio[10000:])
+    hit_counts = np.sort(hit_counts[start_index:])
+    miss_counts = np.sort(miss_counts[start_index:])
+    evict_counts = np.sort(evict_counts[start_index:])
+    curr_size = np.sort(curr_size[start_index:])
+    per_query_hit_ratio = np.sort(per_query_hit_ratio[start_index:])
 
     analysis_targets = [
         {

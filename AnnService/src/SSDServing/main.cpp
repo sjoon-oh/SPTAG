@@ -219,10 +219,12 @@ namespace SPTAG {
 #elif defined (_CACHE_2Q_)
 				globalCache.reset(new EXT::Cache2Q(globalCacheSize));
 #elif defined (_CACHE_BATCH_READ_)
-				const size_t cacheSize1 = (globalCacheSize / 2);
-				const size_t cacheSize2 = (globalCacheSize / 2);
+				double lfuCacheRatio = (globalCacheSize * 0.1);
 
-				globalCache.reset(new EXT::ReadBatchCache(cacheSize1, cacheSize2));
+				const size_t lfuCacheCapacity = globalCacheSize - lfuCacheRatio;
+
+
+				globalCache.reset(new EXT::ReadBatchCache(lfuCacheCapacity, globalCacheSize - lfuCacheCapacity));
 #endif
 
 

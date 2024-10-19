@@ -109,6 +109,8 @@ namespace SPTAG {
 
             std::vector<EXT::PostingList*> observedBatch;
             std::vector<bool> callbackDelayed(num, true);
+
+            std::unordered_set<uintptr_t> isBatchFetched;
 #endif
 
             std::chrono::steady_clock::time_point timeStart, timeStartBatchRead;
@@ -118,7 +120,8 @@ namespace SPTAG {
                 ((std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() * 1.0) / 1000.000)
 
             timeStartBatchRead = std::chrono::steady_clock::now();
-            
+
+            // printf("--------------- START ---------------\n");            
 #endif
 
             memset(myiocbs.data(), 0, num * sizeof(struct iocb));
@@ -142,6 +145,8 @@ namespace SPTAG {
                 //  Note: Check the cache first.
                 ListInfo* listInfo = (ListInfo*)(readRequest->m_payload);
                 uintptr_t key = static_cast<uintptr_t>(readRequest->m_offset) + listInfo->pageOffset;
+
+                // printf("Query >> %ld, %d\n", static_cast<uintptr_t>(readRequest->m_offset), listInfo->pageOffset);
                 
 #ifndef _CACHE_BATCH_READ_    
                 EXT::CacheItem<uintptr_t>* fetchedItem = globalCache->getCachedItem(key); 
@@ -156,25 +161,32 @@ namespace SPTAG {
                 }
 #else
                 int substituteIndex = num - int(reuseCount);
+                SPTAG::EXT::PostingList* foundPostingList = nullptr;
+
+                
+                    // If the key was found from the previous batch, 
+                    // it does not return the target batch, but only returns single one.
 
                 // printf("Now iterating: %d/%d, num(%d), current observed left(%ld), looking for(%ld)", i, substituteIndex, num, observedBatch.size(), key);
                 if (i > (substituteIndex))
                 {
 
                     // printf("Original disk load: %ld, trying to overwrite size: %ld\n", readRequest->m_readSize, observedBatch.front()->getSize());
-
-                    char* destBuffer = reinterpret_cast<char*>(observedBatch.back()->getBuffer());
+                    foundPostingList = observedBatch.back();
+                    char* srcBuffer = reinterpret_cast<char*>(foundPostingList->getBuffer());
                     
-                    // printf(", substituted (Found: %ld) at destination(0x%p)\n", observedBatch.front()->getOffset(), destBuffer);
+                    
+                    // printf(", substituted (Found: %ld) at destination(0x%p)\n", observedBatch.front()->getOffset(), srcBuffer);
                     
                     // Case when prefetched are reused.
                     std::memcpy(
                         reinterpret_cast<uint8_t*>(readRequest->m_buffer), 
-                        destBuffer, 
-                        observedBatch.back()->getSize());
+                        srcBuffer, 
+                        foundPostingList->getSize());
+                    std::memcpy(readRequest->m_payload, foundPostingList->getListInfo(), sizeof(struct ListInfo));
 
                     // substitutedBuffers[i] = readRequest->m_buffer;
-                    // readRequest->m_buffer = destBuffer;
+                    // readRequest->m_buffer = srcBuffer;
 
                     observedBatch.pop_back();
 
@@ -187,7 +199,7 @@ namespace SPTAG {
                 // printf("\n");
 
                 size_t fetchedBatchSize = 0;
-                fetchedBatchSize = globalCache->getCachedReadBatch(key, observedBatch);
+                fetchedBatchSize = globalCache->getCachedReadBatch(key, observedBatch, isBatchFetched);
 
                 if (fetchedBatchSize > 0)
                 {
@@ -195,12 +207,13 @@ namespace SPTAG {
                     // The posting list is in the LFU.
 
                     // printf("Fetched batch size (%ld)\n", fetchedBatchSize);
-                    char* destBuffer = reinterpret_cast<char*>(observedBatch.back()->getBuffer());
-
+                    foundPostingList = observedBatch.back();
+                    char* srcBuffer = reinterpret_cast<char*>(foundPostingList->getBuffer());
+                    
+                    // Substitute what was found.
                     // Return to request.
-                    std::memcpy(reinterpret_cast<uint8_t*>(readRequest->m_buffer), destBuffer, observedBatch.back()->getSize());
-                    // substitutedBuffers[i] = readRequest->m_buffer;
-                    // readRequest->m_buffer = destBuffer;
+                    std::memcpy(reinterpret_cast<uint8_t*>(readRequest->m_buffer), srcBuffer, foundPostingList->getSize());
+                    std::memcpy(readRequest->m_payload, foundPostingList->getListInfo(), sizeof(struct ListInfo));
 
                     observedBatch.pop_back();
 
