@@ -2,3 +2,7 @@
 	path = ThirdParty/zstd
 	url = https://github.com/facebook/zstd
 	branch = release
+[submodule "ThirdParty/gentle-pekin-duck"]
+	path = ThirdParty/gentle-pekin-duck
+    url = https://github.com/sjoon-oh/gentle-pekin-duck
+    branch = in-development
