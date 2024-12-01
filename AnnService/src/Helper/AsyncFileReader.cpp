@@ -3,6 +3,13 @@
 
 #include "inc/Helper/AsyncFileReader.h"
 
+// Added the cache-extension header file,
+#include "inc/Extension/ext-cache.hh"
+#include "inc/Extension/ext-timer.hh"
+#include "inc/Extension/ext-stats.hh"
+
+#include <cstdio>                       // For debugs
+
 namespace SPTAG {
     namespace Helper {
 #ifndef _MSC_VER
@@ -58,9 +65,84 @@ namespace SPTAG {
             std::vector<int> done(handlers.size(), 0);
             int totalToSubmit = 0, channel = 0;
 
+            // ────────────────────────────────────────────────────────────────────────┐
+            // Cache integration starts here.
+            // std::vector<bool> cacheHit(num, false);
+            std::vector<extension::stats::AccessLocation> 
+                accessLocation(num, extension::stats::AccessLocation::ACCESS_LOCATION_DISK); // Disk access by default
+
+            pduck::utils::TimestampList* timerGet   = extension::getTimerHandle("cache-get");
+            pduck::utils::TimestampList* timerDelay = extension::getTimerHandle("cache-delay");
+
+            extension::stats::ReadBatchStats* readBatchStats = extension::stats::getReadBatchStatsHandle();
+            readBatchStats->makeNewReadBatch();             // Start a new batch
+
+            // ────────────────────────────────────────────────────────────────────────┘
+
             memset(myiocbs.data(), 0, num * sizeof(struct iocb));
             for (int i = 0; i < num; i++) {
                 AsyncReadRequest* readRequest = &(readRequests[i]);
+
+                // ────────────────────────────────────────────────────────────────────────┐
+                // Cache integration starts here.
+                
+                extension::templates::ListInfo* listInfo 
+                    = (extension::templates::ListInfo*)(readRequest->m_payload);
+                // 
+                // ListInfo in extension::templates namespace is identical form in SPANN, 
+                // it only helps to provide identical interface for cache integration.
+
+                uint64_t cacheKey = static_cast<uint64_t>(readRequest->m_offset) + listInfo->pageOffset;
+                uint64_t cacheAddr = reinterpret_cast<uint64_t>(readRequest->m_offset);
+                // cacheKey : Absolute offset of the file, offset in page unit + inner page offset.
+                // cacheAddr: Absolute address of the buffer, address in page unit.
+
+                // 
+                // Wrap the cache information
+                pduck::cache::CacheObjInfo cacheObj;
+                
+                cacheObj.m_key      = cacheKey;                                 // Just use the index of the element
+                cacheObj.m_size     = readRequest->m_readSize;                  // Size of the element
+                cacheObj.m_buffer   = (uint8_t*)readRequest->m_buffer;          // Just use the address of the element
+
+                // Record the read batch
+                readBatchStats->recordReadBatch(cacheKey);
+                timerGet->recordStart();
+
+                // pduck::memory::FixedBuffer* cachedData = extension::getCacheHandle()->getImmediate(cacheObj);
+                //  For SPANN, the immediate fetch (updating cache right after the fetch) is not applicable,
+                //  since currently the readRequest->m_buffer does not contain the actual data.
+                //  This is available after the read operation is done. (Original data is unknown)
+                // Therefore, only getDelayed is available.
+                // 
+                // So, it is why readRequest->m_buffer is used as the buffer address in cacheObj.
+                //  After the data fetch, the data will be placed in the readRequest->m_buffer.
+                //  The cache will be updated after the data is fetched by processDelayed.
+
+                pduck::memory::FixedBuffer* cachedData = extension::getCacheHandle()->getDelayed(cacheObj);
+                timerGet->recordStop();
+
+                
+                if (cachedData != nullptr)
+                {
+                    std::memcpy(
+                        reinterpret_cast<uint8_t*>(readRequest->m_buffer), 
+                        cachedData->getAddr(), 
+                        cachedData->getSize());
+
+                    // cacheHit[i] = true;
+                    accessLocation[i] = extension::stats::AccessLocation::ACCESS_LOCATION_MEMORY;
+
+                    continue;
+                }
+
+                    // printf(" >> Cache status: %ld hits, %ld misses, %ld Byte of buffers.\n", 
+                    //     extension::getCacheHandle()->getCacheStatus().m_hitCounts, 
+                    //     extension::getCacheHandle()->getCacheStatus().m_missCounts, 
+                    //     extension::getCacheHandle()->getCurrSize());
+
+                // ────────────────────────────────────────────────────────────────────────┘
+                // Cache integration ends here.
 
                 channel = readRequest->m_status & 0xffff;
                 int fileid = (readRequest->m_status >> 16);
@@ -121,6 +203,28 @@ namespace SPTAG {
                     req->m_callback(true);
                 }
             }
+
+            // ────────────────────────────────────────────────────────────────────────┐
+            // Cache integration starts here.
+            
+
+            for (int i = 0; i < num; i++)
+            {
+                // if (cacheHit[i] == true) 
+                //     readRequests[i].m_callback(true);
+
+                if (accessLocation[i] == extension::stats::AccessLocation::ACCESS_LOCATION_MEMORY)
+                    readRequests[i].m_callback(true);
+            }
+
+            timerDelay->recordStart();
+
+            extension::getCacheHandle()->processDelayed();
+            readBatchStats->updateAccessLocation(accessLocation);
+
+            timerDelay->recordStop();
+
+            // ────────────────────────────────────────────────────────────────────────┘
         }
 #else
         ULONGLONG GetCpuMasks(WORD group, DWORD numCpus)

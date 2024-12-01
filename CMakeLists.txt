@@ -103,7 +103,7 @@ else()
     message (FATAL_ERROR "Could no find openmp!")
 endif()
 
-find_package(Boost 1.66 COMPONENTS system thread serialization wserialization regex filesystem)
+find_package(Boost 1.66 COMPONENTS system thread serialization wserialization regex filesystem program_options)
 if (Boost_FOUND)
     include_directories (${Boost_INCLUDE_DIR})
     link_directories (${Boost_LIBRARY_DIR})
@@ -115,12 +115,18 @@ else()
     message (FATAL_ERROR "Could not find Boost >= 1.67!")
 endif()
 
-option(GPU "GPU" ON)
+# Added submodule: gentle-pekin-duck
+add_subdirectory (ThirdParty/gentle-pekin-duck)
+
+
+# Disabled GPU support for blanc
+option(GPU "GPU" OFF)
 option(LIBRARYONLY "LIBRARYONLY" OFF)
 
 add_subdirectory (ThirdParty/zstd/build/cmake)
 
+# Disabled unnecessaries
 add_subdirectory (AnnService)
-add_subdirectory (Test)
-add_subdirectory (GPUSupport)
-add_subdirectory (Wrappers)
+# add_subdirectory (Test)
+# add_subdirectory (GPUSupport)
+# add_subdirectory (Wrappers)

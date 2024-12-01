@@ -14,6 +14,17 @@
 #include "inc/SSDServing/main.h"
 #include "inc/SSDServing/Utils.h"
 #include "inc/SSDServing/SSDIndex.h"
+
+// Added the cache-extension header file,
+// With some startup testings	
+#include <algorithm>
+#include <random>
+
+#include "utils/ArgParser.hh"
+
+#include "inc/Extension/ext-cache.hh"
+#include "inc/Extension/ext-timer.hh"
+#include "inc/Extension/ext-stats.hh"
  
 using namespace SPTAG;
 
@@ -26,7 +37,7 @@ namespace SPTAG {
 			VectorValueType valueType,
 			DistCalcMethod distCalcMethod,
 			const char* dataFilePath, 
-			const char* indexFilePath) {
+			const char* indexFilePath) {			
 
 
 			bool searchSSD = false;
@@ -189,8 +200,108 @@ int main(int argc, char* argv[]) {
 		exit(-1);
 	}
 
+	// ────────────────────────────────────────────────────────────────────────┐
+	// Cache integration starts here.
+
+	// Argument Parsing
+	pduck::utils::ArgumentParser argParser;
+
+    argParser.addStringOption("cache-policy,c", "Cache policy to use");
+	argParser.addIntOption("cache-size,s", "Cache size to use");
+
+	argParser.parseArgs(argc, argv);
+
+	std::string cacheType = argParser.getStringArgument("cache-policy");
+	size_t initialCacheSize = argParser.getIntArgument("cache-size");
+
+	{	
+		SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "Cache type set: %s\n", cacheType.c_str());
+		
+		extension::initCache(cacheType, initialCacheSize);
+
+		SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "Running test beforehand...\n");
+		pduck::cache::IDelayableCache* cacheHandle = extension::getCacheHandle();
+
+		if (cacheHandle == nullptr) {
+			SPTAGLIB_LOG(Helper::LogLevel::LL_Error, "Cache handle is null\n");
+			exit(1);
+		}
+
+		SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "Cache handle set.\n");
+
+		std::vector<std::uint64_t> someRequestVec;
+		for (int i = 1; i <= 1000; i++)
+		{
+			for (int elem_cnt = 0; elem_cnt < 1000; elem_cnt++)
+				someRequestVec.push_back(i);
+		}
+
+		std::random_device randDev;
+		std::mt19937 generator(randDev());
+	
+		std::shuffle(someRequestVec.begin(), someRequestVec.end(), generator);
+
+		for (int i = 0; i < someRequestVec.size(); i++)
+		{
+			pduck::cache::CacheObjInfo cacheObj;
+
+			cacheObj.m_key = someRequestVec[i];							// Just use the index of the element
+			cacheObj.m_size = sizeof(std::uint64_t);					// Size of the element
+			cacheObj.m_buffer = (uint8_t*)&someRequestVec[i];   		// Just use the address of the element
+
+			// pduck::cache::FixedBufferType* cachedData = cacheInstancePtr->getImmediate(cacheObj);
+			pduck::cache::FixedBufferType* cachedData = cacheHandle->getImmediate(cacheObj);
+
+			if (cachedData != nullptr)
+			{
+				uint8_t* cacheAddr = cachedData->getAddr();
+				uint8_t* rawAddr = (uint8_t*)someRequestVec.data() + i * sizeof(std::uint64_t);
+
+				if (std::memcmp(cacheAddr, rawAddr, sizeof(std::uint64_t)) != 0)
+				{
+					SPTAGLIB_LOG(Helper::LogLevel::LL_Error, "Cache data mismatch, test failed!\n");
+				}
+			}
+		}
+
+		SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "Cache status: %ld Byte of buffers.\n", cacheHandle->getCurrSize());
+
+		SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "Cache reset.");
+		extension::resetCache(cacheType, initialCacheSize);
+	}
+
+	// Initialize stat instances
+	extension::initTimers();
+	extension::stats::initStats();
+
+	// ────────────────────────────────────────────────────────────────────────┘
+	// Cache integration ends here.
+
 	std::map<std::string, std::map<std::string, std::string>> my_map;
 	auto ret = SSDServing::BootProgram(false, &my_map, argv[1]);
+
+	// ────────────────────────────────────────────────────────────────────────┐
+	// Cache integration starts here.i
+	
+	// Cleanups
+	pduck::utils::TimestampList* timerGet = extension::getTimerHandle("cache-get");
+	pduck::utils::TimestampList* timerDelay = extension::getTimerHandle("cache-delay");
+
+	// Export the elapsed times.
+	extension::exportTimersElapsed("cache-get");
+	extension::exportTimersElapsed("cache-delay");
+
+	// Export the stats.
+	extension::exportTimersStats("cache-get");
+	extension::exportTimersStats("cache-delay");
+
+	extension::stats::exportStats();
+
+
+	// ────────────────────────────────────────────────────────────────────────┘
+	// Cache integration ends here.
+
+
 	return ret;
 }
 
