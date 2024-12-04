@@ -33,8 +33,10 @@ void extension::stats::resetStats() noexcept
 void extension::stats::exportStats() noexcept
 {
     g_accessStats->dumpAccessList();
+
     g_accessStats->dumpAccessDistribution();
     g_accessStats->dumpAccessLocation();
 
+    g_accessStats->dumpAccessHitRatio();
 }
 

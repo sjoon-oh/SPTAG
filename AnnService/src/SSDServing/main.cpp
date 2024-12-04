@@ -207,12 +207,19 @@ int main(int argc, char* argv[]) {
 	pduck::utils::ArgumentParser argParser;
 
     argParser.addStringOption("cache-policy,c", "Cache policy to use");
-	argParser.addIntOption("cache-size,s", "Cache size to use");
+	argParser.addStringOption("cache-size,s", "Cache size to use");
+	// argParser.addIntOption("cache-size,s", "Cache size to use");
 
 	argParser.parseArgs(argc, argv);
 
 	std::string cacheType = argParser.getStringArgument("cache-policy");
-	size_t initialCacheSize = argParser.getIntArgument("cache-size");
+	std::string cacheSize = argParser.getStringArgument("cache-size");
+
+	// size_t initialCacheSize = argParser.getIntArgument("cache-size");
+	size_t initialCacheSize = std::stoull(cacheSize);
+
+	SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "Cache type set: %s\n", cacheType.c_str());
+	SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "Cache size set: %ld\n", initialCacheSize);
 
 	{	
 		SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "Cache type set: %s\n", cacheType.c_str());

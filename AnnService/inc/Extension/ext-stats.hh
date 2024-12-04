@@ -148,6 +148,41 @@ namespace extension
                     exportFile.close();
                 }
             }
+
+
+            void dumpAccessHitRatio(const char* p_filename = "access-perq-hit-ratio.csv") noexcept
+            {
+                std::fstream exportFile(p_filename, std::ios::out);
+
+                if (!exportFile.is_open())
+                    return;
+
+                else
+                {
+                    std::uint64_t hitCount = 0;
+                    std::uint64_t missCount = 0;
+
+                    for (int i = 0; i < m_readBatchList.size(); i++)
+                    {
+                        hitCount = 0;
+                        missCount = 0;
+
+                        for (int j = 0; j < m_readBatchList[i].size(); j++)
+                        {
+                            if (m_readBatchList[i][j].m_location == AccessLocation::ACCESS_LOCATION_MEMORY)
+                                hitCount++;
+                            else
+                                missCount++;
+                        }
+
+                        exportFile  << hitCount << "\t"
+                                    << missCount << "\t"
+                                    << hitCount * 1.0 / (hitCount + missCount) << std::endl;
+                    }                
+
+                    exportFile.close();
+                }
+            }
         };
 
         void initStats() noexcept;
