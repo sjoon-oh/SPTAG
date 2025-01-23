@@ -7,6 +7,9 @@
 #include "inc/Core/VectorIndex.h"
 #include "QueryResultSet.h"
 
+#include <cstdio>   // Added.
+#include <fstream>
+
 namespace SPTAG
 {
     namespace COMMON
@@ -169,10 +172,34 @@ namespace SPTAG
                 float meanrecall = 0, minrecall = MaxDist, maxrecall = 0, stdrecall = 0, meanmrr = 0;
                 std::vector<float> thisrecall(NumQuerys, 0);
                 std::unique_ptr<bool[]> visited(new bool[K]);
+
+                // Added
+                // ────────────────────────────────────────────────────────────────────────┐
+	            // Cache integration starts here.
+
+                // Extract the fetchedIDs
+                printf("CalculateRecall(1) Visited size: %ld\n", K);
+                
+                // VID is int32_t
+                std::vector<std::vector<int32_t>> fetchedVids;
+
+                for (SizeType i = 0; i < NumQuerys; i++)
+                {
+                    fetchedVids.emplace_back(std::vector<int32_t>());
+                    for (int j = 0; j < K; j++)
+                    {
+                        fetchedVids.back().push_back(results[i].GetResult(j)->VID);
+                    }
+                }
+
+                // ────────────────────────────────────────────────────────────────────────┘
+	            // Cache integration ends here.
+
                 for (SizeType i = 0; i < NumQuerys; i++)
                 {
                     int minpos = K;
                     memset(visited.get(), 0, K * sizeof(bool));
+
                     for (SizeType id : truth[i])
                     {
                         for (int j = 0; j < K; j++)
@@ -202,6 +229,11 @@ namespace SPTAG
                             }
                         }
                     }
+
+                    // // ────────────────────────────────────────────────────────────────────────┐
+                    // debug = 1;
+                    // // ────────────────────────────────────────────────────────────────────────┘
+
                     thisrecall[i] /= truth[i].size();
                     meanrecall += thisrecall[i];
                     if (thisrecall[i] < minrecall) minrecall = thisrecall[i];
@@ -236,6 +268,58 @@ namespace SPTAG
                 stdrecall = std::sqrt(stdrecall / NumQuerys);
                 if (log) (*log) << meanrecall << " " << stdrecall << " " << minrecall << " " << maxrecall << std::endl;
                 if (MRR) *MRR = meanmrr / NumQuerys;
+
+
+                // ────────────────────────────────────────────────────────────────────────┐
+                
+                printf("CalculateRecall(1) fetchedVids size: %ld\n", fetchedVids.size());
+                printf("CalculateRecall(1) fetchedVids[0] size: %ld\n", fetchedVids[0].size());
+
+                std::fstream searchResultFile("searched-gts-2d.csv", std::ios::out);
+
+                if (!searchResultFile.is_open())
+                    printf("File open failed!\n");
+
+                else{
+
+                    for (auto& queryResults: fetchedVids)
+                    {
+                        for (auto& vid: queryResults)
+                        {
+                            searchResultFile << vid << "\t";
+                        }
+
+                        searchResultFile << "\n";
+                    }
+
+                    searchResultFile.close();
+                }
+
+                std::fstream searchFlattenedResultFile("searched-gts-1d.csv", std::ios::out);
+
+                if (!searchFlattenedResultFile.is_open())
+                    printf("File open failed!\n");
+
+                else{
+                    
+                    int32_t count = 0;
+                    for (auto& queryResults: fetchedVids)
+                    {
+                        for (auto& vid: queryResults)
+                        {
+                            searchFlattenedResultFile << count << "\t" << vid << "\n";
+                            count += 1;
+                        }
+                    }
+
+                    searchFlattenedResultFile.close();
+                }
+
+
+                // ────────────────────────────────────────────────────────────────────────┘
+	            // Cache integration ends here.
+
+
                 return meanrecall;
             }
 
@@ -262,6 +346,16 @@ namespace SPTAG
 
                 float recalls = 0;
                 std::vector<bool> visited(K, false);
+
+                // Added
+                // ────────────────────────────────────────────────────────────────────────┐
+	            // Cache integration starts here.
+
+                printf("CalculateRecall(2) Visited size: %ld\n", visited.size());
+
+                // ────────────────────────────────────────────────────────────────────────┘
+	            // Cache integration ends here.
+
                 for (SizeType y = 0; y < K; y++)
                 {
                     for (SizeType z = 0; z < K; z++)

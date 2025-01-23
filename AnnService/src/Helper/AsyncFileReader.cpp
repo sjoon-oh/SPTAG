@@ -67,15 +67,17 @@ namespace SPTAG {
 
             // ────────────────────────────────────────────────────────────────────────┐
             // Cache integration starts here.
-            // std::vector<bool> cacheHit(num, false);
+            // Records whether the item is processed or not.
+            //  If the item is processed, the callback function will not be called.
+            std::vector<AsyncReadRequest*> memoryItemToProcess;
             std::vector<extension::stats::AccessLocation> 
                 accessLocation(num, extension::stats::AccessLocation::ACCESS_LOCATION_DISK); // Disk access by default
 
-            pduck::utils::TimestampList* timerGet   = extension::getTimerHandle("cache-get");
-            pduck::utils::TimestampList* timerDelay = extension::getTimerHandle("cache-delay");
+            pduck::utils::TimestampList* timerGet   = extension::getTimerHandle("cache-get");   
 
             extension::stats::ReadBatchStats* readBatchStats = extension::stats::getReadBatchStatsHandle();
-            readBatchStats->makeNewReadBatch();             // Start a new batch
+            readBatchStats->makeNewReadBatch(); // Start a new batch
+
 
             // ────────────────────────────────────────────────────────────────────────┘
 
@@ -106,7 +108,9 @@ namespace SPTAG {
                 cacheObj.m_buffer   = (uint8_t*)readRequest->m_buffer;          // Just use the address of the element
 
                 // Record the read batch
-                readBatchStats->recordReadBatch(cacheKey);
+                readBatchStats->recordReadBatch(cacheKey, cacheObj.m_size);
+                readBatchStats->recordReadBatchPage(readRequest->m_offset, cacheObj.m_size);
+                
                 timerGet->recordStart();
 
                 // pduck::memory::FixedBuffer* cachedData = extension::getCacheHandle()->getImmediate(cacheObj);
@@ -122,16 +126,16 @@ namespace SPTAG {
                 pduck::memory::FixedBuffer* cachedData = extension::getCacheHandle()->getDelayed(cacheObj);
                 timerGet->recordStop();
 
-                
+                // Case when cache hit
                 if (cachedData != nullptr)
                 {
                     std::memcpy(
                         reinterpret_cast<uint8_t*>(readRequest->m_buffer), 
-                        cachedData->getAddr(), 
+                        cachedData->getBlock(), 
                         cachedData->getSize());
 
-                    // cacheHit[i] = true;
                     accessLocation[i] = extension::stats::AccessLocation::ACCESS_LOCATION_MEMORY;
+                    memoryItemToProcess.emplace_back(readRequest);
 
                     continue;
                 }
@@ -185,6 +189,17 @@ namespace SPTAG {
                 }
                 totalQueued = totalDone;
 
+                // ────────────────────────────────────────────────────────────────────────┐
+                // Cache integration starts here.
+
+                for (int i = 0; i < memoryItemToProcess.size(); i++)
+                    memoryItemToProcess[i]->m_callback(true);
+
+                if (memoryItemToProcess.size() > 0)
+                    memoryItemToProcess.clear();
+
+                // ────────────────────────────────────────────────────────────────────────┘
+
                 for (int i = 0; i < handlers.size(); i++) {
                     if (done[i] < submitted[i]) {
                         int wait = submitted[i] - done[i];
@@ -206,23 +221,23 @@ namespace SPTAG {
 
             // ────────────────────────────────────────────────────────────────────────┐
             // Cache integration starts here.
-            
 
-            for (int i = 0; i < num; i++)
+            // 
+            // Before ending, process the delayed cache items.
+            // The cache items may not be processed whie waiting for the data to be fetched,
+            // since there are only data placed on the memory, not the disk.
+            // This means that the cache items may not be processed in the previous loop 
+            // which assumes that there are no requests that should touch the disk.
+            // In this case, nothing is cleared in the previous loop, so the items should be processed here.
+            if (memoryItemToProcess.size() > 0)
             {
-                // if (cacheHit[i] == true) 
-                //     readRequests[i].m_callback(true);
+                for (int i = 0; i < memoryItemToProcess.size(); i++)
+                    memoryItemToProcess[i]->m_callback(true);
 
-                if (accessLocation[i] == extension::stats::AccessLocation::ACCESS_LOCATION_MEMORY)
-                    readRequests[i].m_callback(true);
+                memoryItemToProcess.clear();
             }
 
-            timerDelay->recordStart();
-
-            extension::getCacheHandle()->processDelayed();
             readBatchStats->updateAccessLocation(accessLocation);
-
-            timerDelay->recordStop();
 
             // ────────────────────────────────────────────────────────────────────────┘
         }

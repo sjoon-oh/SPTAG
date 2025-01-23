@@ -8,61 +8,63 @@ mkdir -p log
 # List of cache policies
 
 # CONFIG_PATH="configs/sift1m.ini"
+# CONFIG_PATH="configs/sift1m.ini"
 CONFIG_PATH="configs/spacev1b-extended.ini"
 
 # Updated configuration path
 TEMPLATE_CONFIG_PATH="configs/spacev1b-extended-template.ini"
+# TEMPLATE_CONFIG_PATH="configs/spacev1b.ini"
 
 TRACE_PATH=log/trace-${RUN_START_TIME}
 
 mkdir -p ${TRACE_PATH}
 
-CACHE_POLICIES=("LRU")
+CACHE_POLICIES=("LRU" "FIFO")
 CACHE_SIZE=(
-    # "32mb:33554432"
-    # "64mb:67108864"
-    # "128mb:134217728"
-    # "256mb:268435456"
-    # "512mb:536870912"
-    "1gb:1073741824"
-    "2gb:2147483648"
-    "4gb:4294967296"
-    "8gb:8589934592"
-    "16gb:17179869184"
-    "32gb:34359738368"
-    # "64gb:68719476736"
+    "3.74gb:3745994342"
+    "7.49gb:7491988684"
+    "11.24gb:11237983028"
+    "14.98gb:14983977372"
+    "18.73gb:18729971712"
+    "22.48gb:22475966054"
+    "26.22gb:26221960396"
+    "29.97gb:29967954740"
+    "33.71gb:33713949082"
+    "37.46gb:37459943424"
 )
 
 SPANN_MAX_SEARCH_NUM=(
+    # "32"
+    "96"
     # "48" "96" "192" "384"
-    "768" "1536" "3072" "6144"
+    # "768" "1536" "3072" "6144"
 )
 
 # First, run the original test
-for search_num in "${SPANN_MAX_SEARCH_NUM[@]}"; do
+# for search_num in "${SPANN_MAX_SEARCH_NUM[@]}"; do
 
-    cp ${CONFIG_PATH} ${TEMPLATE_CONFIG_PATH}
-    sed -i "/\[SearchSSDIndex\]/,/^$/ s/^\(InternalResultNum=\).*/\1${search_num}/" ${TEMPLATE_CONFIG_PATH}
+#     cp ${CONFIG_PATH} ${TEMPLATE_CONFIG_PATH}
+#     sed -i "/\[SearchSSDIndex\]/,/^$/ s/^\(InternalResultNum=\).*/\1${search_num}/" ${TEMPLATE_CONFIG_PATH}
 
-    printf "Running unmodified SPANN for ${search_num} searches\n"
+#     printf "Running unmodified SPANN for ${search_num} searches\n"
 
-    OUT_FILE=${TRACE_PATH}/spacev1b-extended-original-${search_num}.out
+#     OUT_FILE=${TRACE_PATH}/spacev1b-extended-original-${search_num}.out
 
-    ./ssdserving-precompiled ${TEMPLATE_CONFIG_PATH} > ${OUT_FILE}
+#     ./ssdserving-precompiled ${TEMPLATE_CONFIG_PATH} > ${OUT_FILE}
 
-    # Extract summarized data
-    HEAD_LATENCY=$(grep -A 2 "Head Latency Distribution:" ${OUT_FILE} | tail -n 1 | sed 's/^\[1\] //;s/  */\t/g')
-    EX_LATENCY=$(grep -A 2 "Ex Latency Distribution:" ${OUT_FILE} | tail -n 1 | sed 's/^\[1\] //;s/  */\t/g')
-    TOTAL_LATENCY=$(grep -A 2 "Total Latency Distribution:" ${OUT_FILE} | tail -n 1 | sed 's/^\[1\] //;s/  */\t/g')
+#     # Extract summarized data
+#     HEAD_LATENCY=$(grep -A 2 "Head Latency Distribution:" ${OUT_FILE} | tail -n 1 | sed 's/^\[1\] //;s/  */\t/g')
+#     EX_LATENCY=$(grep -A 2 "Ex Latency Distribution:" ${OUT_FILE} | tail -n 1 | sed 's/^\[1\] //;s/  */\t/g')
+#     TOTAL_LATENCY=$(grep -A 2 "Total Latency Distribution:" ${OUT_FILE} | tail -n 1 | sed 's/^\[1\] //;s/  */\t/g')
 
-    echo -e "${OUT_FILE}\t${HEAD_LATENCY}" >> summary-original-head.csv
-    echo -e "${OUT_FILE}\t${EX_LATENCY}" >> summary-original-ex.csv
-    echo -e "${OUT_FILE}\t${TOTAL_LATENCY}" >> summary-original-total.csv
+#     echo -e "${OUT_FILE}\t${HEAD_LATENCY}" >> summary-original-head.csv
+#     echo -e "${OUT_FILE}\t${EX_LATENCY}" >> summary-original-ex.csv
+#     echo -e "${OUT_FILE}\t${TOTAL_LATENCY}" >> summary-original-total.csv
 
-    rm ${TEMPLATE_CONFIG_PATH}
-done
+#     rm ${TEMPLATE_CONFIG_PATH}
+# done
 
-exit
+# exit
 
 for cache_policy in "${CACHE_POLICIES[@]}"; do
 

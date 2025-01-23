@@ -31,10 +31,12 @@ namespace extension
             struct AccessStat
             {
                 std::uint64_t               m_address;
+                std::uint64_t               m_size;
                 AccessLocation              m_location;
             };
 
             std::vector<std::vector<struct AccessStat>> m_readBatchList;
+            std::vector<std::vector<struct AccessStat>> m_readBatchListPage;
 
         public:
             ReadBatchStats() = default;
@@ -43,12 +45,27 @@ namespace extension
             void makeNewReadBatch() noexcept
             {
                 m_readBatchList.emplace_back();
+                m_readBatchListPage.emplace_back();
             }
 
-            void recordReadBatch(std::uint64_t p_address) noexcept
+            // void recordReadBatch(std::uint64_t p_address) noexcept
+            // {
+            //     m_readBatchList.back().emplace_back(
+            //         AccessStat{p_address, 0, AccessLocation::ACCESS_LOCATION_DISK}
+            //     );
+            // }
+
+            void recordReadBatch(std::uint64_t p_address, std::uint64_t p_size = 0) noexcept
             {
                 m_readBatchList.back().emplace_back(
-                    AccessStat{p_address, AccessLocation::ACCESS_LOCATION_DISK}
+                    AccessStat{p_address, p_size, AccessLocation::ACCESS_LOCATION_DISK}
+                );
+            }
+
+            void recordReadBatchPage(std::uint64_t p_address, std::uint64_t p_size = 0) noexcept
+            {
+                m_readBatchListPage.back().emplace_back(
+                    AccessStat{p_address, p_size, AccessLocation::ACCESS_LOCATION_MEMORY}
                 );
             }
 
@@ -58,12 +75,16 @@ namespace extension
                     return;
 
                 for (int i = 0; i < p_locationList.size(); i++)
+                {
                     m_readBatchList.back()[i].m_location = p_locationList[i];
+                    m_readBatchListPage.back()[i].m_location = p_locationList[i];
+                }
             }
 
             void clearReadBatch() noexcept
             {
                 m_readBatchList.clear();
+                m_readBatchListPage.clear();
             }
 
             void dumpAccessDistribution() noexcept
@@ -106,25 +127,70 @@ namespace extension
             }
 
 
-            void dumpAccessList(const char* p_filename = "access-history.csv") noexcept
+            void dumpAccessList(const char* p_filename = "") noexcept
             {
-                std::fstream exportFile(p_filename, std::ios::out);
+                std::fstream exportFile("access-history.csv", std::ios::out);
+                std::fstream exportFilePage("access-history-page.csv", std::ios::out);
 
                 if (!exportFile.is_open())
                     return;
 
-                else
+                if (!exportFilePage.is_open())
+                    return;
+
                 {
                     for (int i = 0; i < m_readBatchList.size(); i++)
                     {
                         for (int j = 0; j < m_readBatchList[i].size(); j++)
-                            exportFile << m_readBatchList[i][j].m_address << "\t";
+                            exportFile  << m_readBatchList[i][j].m_address << "\t" 
+                                        << m_readBatchList[i][j].m_size;
                         
                         exportFile << std::endl;
                     }
 
                     exportFile.close();
+
+                    for (int i = 0; i < m_readBatchListPage.size(); i++)
+                    {
+                        for (int j = 0; j < m_readBatchListPage[i].size(); j++)
+                            exportFilePage  << m_readBatchListPage[i][j].m_address << "\t" 
+                                            << m_readBatchListPage[i][j].m_size;
+                        
+                        exportFilePage << std::endl;
+                    }
+
+                    exportFilePage.close();
                 }
+
+                // Second phase, flattened list
+                std::fstream exportFileFlattened1("access-history-flattened-1.csv", std::ios::out);
+                std::fstream exportFilePageFlattened1("access-history-page-flattened-1.csv", std::ios::out);
+
+                if (!exportFileFlattened1.is_open())
+                    return;
+
+                if (!exportFilePageFlattened1.is_open())
+                    return;
+
+                for (int i = 0; i < m_readBatchList.size(); i++)
+                {
+                    for (int j = 0; j < m_readBatchList[i].size(); j++)
+                        exportFileFlattened1    << i                                    << "\t"
+                                                << m_readBatchList[i][j].m_address      << "\t" 
+                                                << m_readBatchList[i][j].m_size         << "\n";
+                }
+
+                exportFileFlattened1.close();
+
+                for (int i = 0; i < m_readBatchListPage.size(); i++)
+                {
+                    for (int j = 0; j < m_readBatchListPage[i].size(); j++)
+                        exportFilePageFlattened1    << i                                        << "\t"
+                                                    << m_readBatchListPage[i][j].m_address      << "\t" 
+                                                    << m_readBatchListPage[i][j].m_size         << "\n";
+                }
+
+                exportFilePageFlattened1.close();
             }
 
 

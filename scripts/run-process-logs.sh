@@ -47,31 +47,31 @@ IFS=$'\n' DELAY_ELAPSED_FILES=($(sort <<<"${DELAY_ELAPSED_FILES[*]}"))
 # ----------------------------------------
 mkdir -p reports
 
-# PROCESS_SCRIPT=scripts/process-access-distribution.py
+PROCESS_SCRIPT=scripts/process-access-distribution.py
 
-# for file in ${DISTRIBUTION_FILES[@]}; do
+for file in ${DISTRIBUTION_FILES[@]}; do
 
-#     printf "Processing access distribution ${file}...\n"
-#     python3.12 ../../${PROCESS_SCRIPT} ${file}
+    printf "Processing access distribution ${file}...\n"
+    python3.12 ../../${PROCESS_SCRIPT} ${file}
 
-#     printf "\n"
-# done
+    printf "\n"
+done
 
-# PROCESS_SCRIPT=scripts/process-perq-hit-ratio.py
+PROCESS_SCRIPT=scripts/process-perq-hit-ratio.py
 
-# for file in ${PERQ_HIT_RATIO_FILES[@]}; do
+for file in ${PERQ_HIT_RATIO_FILES[@]}; do
 
-#     printf "Processing perq hit ratio ${file}...\n"
-#     python3.12 ../../${PROCESS_SCRIPT} ${file}
+    printf "Processing perq hit ratio ${file}...\n"
+    python3.12 ../../${PROCESS_SCRIPT} ${file}
 
-#     printf "\n"
-# done
+    printf "\n"
+done
 
 PROCESS_SCRIPT=scripts/process-access-distribution-2.py
 
 for file in ${HISTORY_FILES[@]}; do
 
-    printf "Processing perq hit ratio ${file}...\n"
+    printf "Processing access distribution 2 ${file}...\n"
     python3.12 ../../${PROCESS_SCRIPT} ${file}
 
     printf "\n"

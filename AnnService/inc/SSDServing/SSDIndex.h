@@ -12,6 +12,11 @@
 #include "inc/Helper/StringConvert.h"
 #include "inc/SSDServing/Utils.h"
 
+// Added the cache-extension header file,
+#include "inc/Extension/ext-cache.hh"
+#include "inc/Extension/ext-timer.hh"
+#include "inc/Extension/ext-stats.hh"
+
 namespace SPTAG {
 	namespace SSDServing {
 		namespace SSDIndex {
@@ -137,6 +142,12 @@ namespace SPTAG {
                                 p_index->SearchDiskIndex(p_results[index], &(p_stats[index]));
                                 double exEndTime = threadws.getElapsedMs();
 
+                                pduck::utils::TimestampList* timerDelay = extension::getTimerHandle("cache-delay");
+
+                                timerDelay->recordStart();
+                                extension::getCacheHandle()->processDelayed();
+                                timerDelay->recordStop();
+
                                 p_stats[index].m_exLatency = exEndTime - endTime;
                                 p_stats[index].m_totalLatency = p_stats[index].m_totalSearchLatency = exEndTime - startTime;
                             }
@@ -156,6 +167,11 @@ namespace SPTAG {
                     sendingCost,
                     numQueries / sendingCost,
                     static_cast<uint32_t>(numQueries));
+
+                SPTAGLIB_LOG(Helper::LogLevel::LL_Info,
+                    "Final cache size: %ld bytes.\n", extension::getCacheHandle()->getCurrSize());
+
+                // extension::getCacheHandle()->dumpCacheStatus();
 
                 for (int i = 0; i < numQueries; i++) { p_results[i].CleanQuantizedTarget(); }
             }
