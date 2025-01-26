@@ -68,7 +68,6 @@ public:
 
     virtual void Normalize(int p_threads);
 
-private:
     ByteArray m_data;
 
     VectorValueType m_valueType;

@@ -24,7 +24,6 @@ public:
 
     virtual std::shared_ptr<MetadataSet> GetMetadataSet() const;
 
-private:
     std::string m_vectorOutput;
 };
 

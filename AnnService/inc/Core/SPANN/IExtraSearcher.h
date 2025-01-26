@@ -52,6 +52,10 @@ namespace SPTAG {
 
             double m_exLatency;
 
+            double m_cacheGetLatency;
+
+            double m_cacheInsertLatency;
+
             double m_asyncLatency0;
 
             double m_asyncLatency1;

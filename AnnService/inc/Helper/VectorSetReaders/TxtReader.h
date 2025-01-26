@@ -29,7 +29,6 @@ public:
 
     virtual std::shared_ptr<MetadataSet> GetMetadataSet() const;
 
-private:
     typedef std::pair<std::string, std::size_t> FileInfoPair;
 
     static std::vector<FileInfoPair> GetFileSizes(const std::string& p_filePaths);

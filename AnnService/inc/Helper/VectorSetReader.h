@@ -53,7 +53,6 @@ public:
 
     static std::shared_ptr<VectorSetReader> CreateInstance(std::shared_ptr<ReaderOptions> p_options);
 
-protected:
     std::shared_ptr<ReaderOptions> m_options;
 };
 

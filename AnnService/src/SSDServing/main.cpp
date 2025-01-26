@@ -14,6 +14,25 @@
 #include "inc/SSDServing/main.h"
 #include "inc/SSDServing/Utils.h"
 #include "inc/SSDServing/SSDIndex.h"
+
+#define __TOPKACHE2__
+#ifdef __TOPKACHE1__
+
+// TopKache
+#include "VectorPool.hh"
+#include "ResultCache.hh"
+
+std::unique_ptr<topkache::ResultCache> topKacheInstance;
+
+#elif defined(__TOPKACHE2__)
+
+#include "ResultCache2.hh"
+
+std::unique_ptr<topkache::ResultCache2> topKacheInstance;
+
+#endif
+
+
  
 using namespace SPTAG;
 
@@ -163,6 +182,36 @@ namespace SPTAG {
 
 				SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "End generating truth.\n");
 			}
+
+#pragma region TOPKACHE
+
+#ifdef __TOPKACHE1__
+
+			// 
+			// Put the topkache
+			size_t vector_pool_size = 4 * 6400;
+			size_t vector_data_size = 2048;
+			
+			// 
+			// Put the topkache
+			topKacheInstance.reset(
+				new topkache::ResultCache(vector_pool_size, vector_data_size)
+			);
+#elif defined(__TOPKACHE2__)
+			
+			// 
+			// Put the topkache
+			size_t vector_pool_size = 7143;
+			size_t vector_data_size = 8;
+
+			// ~180KB, 6400 elements in 28 Byte slot each
+			
+			// 
+			// Put the topkache
+			topKacheInstance.reset(
+				new topkache::ResultCache2(vector_pool_size, vector_data_size)
+			);
+#endif
 
 			if (searchSSD) {
 #define DefineVectorValueType(Name, Type) \

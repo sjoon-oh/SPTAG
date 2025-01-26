@@ -33,7 +33,6 @@ namespace SPTAG
 
             virtual std::shared_ptr<MetadataSet> GetMetadataSet() const { return nullptr; }
 
-        private:
             std::shared_ptr<VectorSet> m_vectors;
         };
 

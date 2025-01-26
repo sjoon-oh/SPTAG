@@ -12,6 +12,35 @@
 #include "inc/Helper/StringConvert.h"
 #include "inc/SSDServing/Utils.h"
 
+#include <functional>
+#include <map>
+#include <cstdio>
+
+
+#define __TOPKACHE2__
+#ifdef __TOPKACHE1__
+
+#include "ResultCache.hh"
+
+extern std::unique_ptr<topkache::ResultCache> topKacheInstance;
+SPTAG::BasicVectorSet* queryVectorSet;
+
+std::vector<size_t> hashedQuery;
+size_t perVectorDataSize;
+
+#elif defined(__TOPKACHE2__)
+
+#include "ResultCache2.hh"
+
+extern std::unique_ptr<topkache::ResultCache2> topKacheInstance;
+SPTAG::BasicVectorSet* queryVectorSet;
+
+std::vector<size_t> hashedQuery;
+size_t perVectorDataSize;
+
+#endif
+
+
 namespace SPTAG {
 	namespace SSDServing {
 		namespace SSDIndex {
@@ -68,6 +97,12 @@ namespace SPTAG {
                 for (const auto& v : p_values)
                 {
                     T tmp = p_get(v);
+
+                    if (tmp == 0)
+                    {
+                        continue;
+                    }
+
                     sum += tmp;
                     collects.push_back(tmp);
                 }
@@ -112,6 +147,65 @@ namespace SPTAG {
                 threads.reserve(p_numThreads);
                 SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "Searching: numThread: %d, numQueries: %d.\n", p_numThreads, numQueries);
 
+#ifdef __TOPKACHE1__
+
+                struct QueryResultTopKacheForm {
+                    std::int32_t vid;
+                    float dist;
+                    // char vector_data[240];
+                };
+
+                // Prepare data
+                size_t vector_list_size = p_internalResultNum;
+                struct QueryResultTopKacheForm** vector_data_list = new struct QueryResultTopKacheForm*[vector_list_size];
+
+
+                for (int i = 0; i < vector_list_size; i++)
+                {
+                    vector_data_list[i] = (new struct QueryResultTopKacheForm);
+                    std::memset(vector_data_list[i], 0, sizeof(struct QueryResultTopKacheForm));
+                }
+
+                topkache::Vector** vectors = new topkache::Vector*[vector_list_size];
+                for (int i = 0; i < p_internalResultNum; i++)
+                {
+                    vectors[i] = new topkache::Vector();        // New vector
+                    vectors[i]->setVectorData(
+                        (topkache::vector_data_t*)vector_data_list[i]);     // Set vector data
+                }
+
+                std::uint32_t hit_counts = 0;
+
+#elif defined(__TOPKACHE2__)
+
+                struct QueryResultTopKacheForm {
+                    std::int32_t vid;
+                    float dist;
+                    // char vector_data[240];
+                };
+
+                // Prepare data
+                size_t vector_list_size = p_internalResultNum;
+                struct QueryResultTopKacheForm** vector_data_list = new struct QueryResultTopKacheForm*[vector_list_size];
+
+
+                for (int i = 0; i < vector_list_size; i++)
+                {
+                    vector_data_list[i] = (new struct QueryResultTopKacheForm);
+                    std::memset(vector_data_list[i], 0, sizeof(struct QueryResultTopKacheForm));
+                }
+
+                topkache::Vector2** vectors = new topkache::Vector2*[vector_list_size];
+                for (int i = 0; i < p_internalResultNum; i++)
+                {
+                    vectors[i] = new topkache::Vector2();        // New vector
+                    vectors[i]->setVectorData(
+                        (topkache::vector_data_t*)vector_data_list[i]);     // Set vector data
+                }
+
+                std::uint32_t hit_counts = 0;
+
+#endif
                 Utils::StopW sw;
 
                 for (int i = 0; i < p_numThreads; i++) { threads.emplace_back([&, i]()
@@ -126,15 +220,169 @@ namespace SPTAG {
                             index = queriesSent.fetch_add(1);
                             if (index < numQueries)
                             {
+
+#pragma region TOPKACHE
+                                double startTime = threadws.getElapsedMs();
+
+// #ifndef __TOPKCACHE__
+//                                 if ((index & ((1 << 14) - 1)) == 0)
+//                                 {
+//                                     SPTAGLIB_LOG(Helper::LogLevel::LL_Info, 
+//                                         "Sent %.2lf%%... Internal result num: %ld, Current hit ratio: %.4lf\n", 
+//                                             index * 100.0 / numQueries, p_internalResultNum, hit_counts * 1.0 / index);
+//                                 }
+// #endif
+#ifdef __TOPKACHE1__
+
+                                double cacheGetStartTime = threadws.getElapsedMs();
+
+                                QueryResult& queryResult = p_results[index];
+
                                 if ((index & ((1 << 14) - 1)) == 0)
                                 {
-                                    SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "Sent %.2lf%%...\n", index * 100.0 / numQueries);
+                                    size_t numSearchedVectors = queryResult.m_resultNum;
+                                    SPTAGLIB_LOG(Helper::LogLevel::LL_Info, 
+                                        "Sent %.2lf%%... Internal result num: %ld, Current hit ratio: %.4lf\n", 
+                                            index * 100.0 / numQueries, p_internalResultNum, hit_counts * 1.0 / index);
                                 }
 
-                                double startTime = threadws.getElapsedMs();
+                                // 
+                                // First, we need to get the result from the topkache
+                                size_t hashed_query_id = hashedQuery[index];
+                                topkache::result_cache_entry_t* resultCacheEntry = topKacheInstance->getResultCacheEntryStrict(hashed_query_id);
+
+                                // bool complete_set = true;
+                                if (resultCacheEntry != nullptr) 
+                                {
+                                    hit_counts++;
+                                    for (int result_i = 0; result_i < p_internalResultNum; result_i++)
+                                    {
+                                        struct QueryResultTopKacheForm* vector_data 
+                                            = (struct QueryResultTopKacheForm*)(resultCacheEntry->vector_slot_reference_list[result_i]->getVectorData());
+
+                                        queryResult.SetResult(result_i, vector_data->vid, vector_data->dist);
+                                    }
+                                } 
+
+                                topKacheInstance->releaseReadResultCacheEntryStrict(resultCacheEntry);
+
+                                double cacheGetEndTime = threadws.getElapsedMs();
+                                p_stats[index].m_cacheGetLatency = cacheGetEndTime - cacheGetStartTime;
+                                
+                                if (resultCacheEntry != nullptr)
+                                {
+                                    p_stats[index].m_cacheInsertLatency = 0;
+                                    p_stats[index].m_exLatency = 0;
+
+                                    p_stats[index].m_totalLatency = p_stats[index].m_totalSearchLatency = cacheGetEndTime - startTime;
+
+                                    continue;
+                                }
+
+#elif defined(__TOPKACHE2__)
+
+                                double cacheGetStartTime = threadws.getElapsedMs();
+
+                                QueryResult& queryResult = p_results[index];
+
+                                if ((index & ((1 << 14) - 1)) == 0)
+                                {
+                                    size_t numSearchedVectors = queryResult.m_resultNum;
+                                    SPTAGLIB_LOG(Helper::LogLevel::LL_Info, 
+                                        "Sent %.2lf%%... Internal result num: %ld, Current hit ratio: %.4lf\n", 
+                                            index * 100.0 / numQueries, p_internalResultNum, hit_counts * 1.0 / index);
+                                }
+
+
+                                // 
+                                // First, we need to get the result from the topkache
+                                size_t hashed_query_id = hashedQuery[index];
+                                topkache::result_cache_entry2_t* resultCacheEntry = topKacheInstance->getCacheEntry(hashed_query_id);
+
+                                // bool complete_set = true;
+                                if (resultCacheEntry != nullptr) 
+                                {
+                                    hit_counts++;
+                                    for (int result_i = 0; result_i < p_internalResultNum; result_i++)
+                                    {
+                                        struct QueryResultTopKacheForm* vector_data 
+                                            = (struct QueryResultTopKacheForm*)(resultCacheEntry->vector_slot_reference_list[result_i]->getVectorData());
+
+                                        queryResult.SetResult(result_i, vector_data->vid, vector_data->dist);
+                                    }
+                                } 
+
+                                topKacheInstance->releaseCacheEntry(resultCacheEntry);
+
+                                double cacheGetEndTime = threadws.getElapsedMs();
+                                p_stats[index].m_cacheGetLatency = cacheGetEndTime - cacheGetStartTime;
+                                
+                                if (resultCacheEntry != nullptr)
+                                {
+                                    p_stats[index].m_cacheInsertLatency = 0;
+                                    p_stats[index].m_exLatency = 0;
+
+                                    p_stats[index].m_totalLatency = p_stats[index].m_totalSearchLatency = cacheGetEndTime - startTime;
+
+                                    continue;
+                                }
+
+
+#endif
+
                                 p_index->GetMemoryIndex()->SearchIndex(p_results[index]);
                                 double endTime = threadws.getElapsedMs();
                                 p_index->SearchDiskIndex(p_results[index], &(p_stats[index]));
+                                
+
+#ifdef __TOPKACHE1__
+                                double cachePutStartTime = threadws.getElapsedMs();
+                                if (resultCacheEntry == nullptr) // Case when not found
+                                {
+                                    for (int result_i = 0; result_i < vector_list_size; result_i++)
+                                    {
+                                        vector_data_list[result_i]->vid = queryResult.m_results[result_i].VID;      // Set VID
+                                        vector_data_list[result_i]->dist = queryResult.m_results[result_i].Dist;    // Set distance
+
+                                        vectors[result_i]->setVectorId(queryResult.m_results[result_i].VID);
+                                        vectors[result_i]->setVectorVersion(0);
+                                    }
+
+                                    topkache::result_cache_entry_t* new_entry = topKacheInstance->prepareResultCacheEntry(
+                                        hashed_query_id, vector_list_size, vectors
+                                    );
+
+                                    topKacheInstance->insertResultCacheEntryNoQueue(hashed_query_id, new_entry);
+                                }
+                                double cachePutEndTime = threadws.getElapsedMs();
+
+                                p_stats[index].m_cacheInsertLatency = cachePutEndTime - cachePutStartTime;
+#elif defined(__TOPKACHE2__)
+                                
+                                double cachePutStartTime = threadws.getElapsedMs();
+                                if (resultCacheEntry == nullptr) // Case when not found
+                                {
+                                    for (int result_i = 0; result_i < vector_list_size; result_i++)
+                                    {
+                                        vector_data_list[result_i]->vid = queryResult.m_results[result_i].VID;      // Set VID
+                                        vector_data_list[result_i]->dist = queryResult.m_results[result_i].Dist;    // Set distance
+
+                                        vectors[result_i]->setVectorId(queryResult.m_results[result_i].VID);
+                                        vectors[result_i]->setVectorVersion(0);
+                                    }
+
+                                    topkache::result_cache_entry2_t* new_entry = topKacheInstance->makeCacheEntry(
+                                        hashed_query_id, vector_list_size, vectors
+                                    );
+
+                                    bool insert_success = topKacheInstance->insertCacheEntry(hashed_query_id, new_entry);
+                                }
+                                double cachePutEndTime = threadws.getElapsedMs();
+
+                                p_stats[index].m_cacheInsertLatency = cachePutEndTime - cachePutStartTime;
+
+#endif
+
                                 double exEndTime = threadws.getElapsedMs();
 
                                 p_stats[index].m_exLatency = exEndTime - endTime;
@@ -156,6 +404,17 @@ namespace SPTAG {
                     sendingCost,
                     numQueries / sendingCost,
                     static_cast<uint32_t>(numQueries));
+
+                for (int i = 0; i < vector_list_size; i++)
+                    delete vector_data_list[i];
+                delete[] vector_data_list;
+
+                for (int i = 0; i < p_internalResultNum; i++)
+                    delete vectors[i];
+                delete[] vectors;
+
+                SPTAGLIB_LOG(Helper::LogLevel::LL_Info,
+                    "Hits %u/%u\n", hit_counts, numQueries);
 
                 for (int i = 0; i < numQueries; i++) { p_results[i].CleanQuantizedTarget(); }
             }
@@ -219,6 +478,9 @@ namespace SPTAG {
                 auto querySet = queryReader->GetVectorSet();
                 int numQueries = querySet->Count();
 
+                // Register for global vectorSet
+                queryVectorSet = (BasicVectorSet*)querySet.get();
+
                 std::vector<QueryResult> results(numQueries, QueryResult(NULL, max(K, internalResultNum), false));
                 std::vector<SPANN::SearchStats> stats(numQueries);
                 for (int i = 0; i < numQueries; ++i)
@@ -226,6 +488,61 @@ namespace SPTAG {
                     (*((COMMON::QueryResultSet<ValueType>*)&results[i])).SetTarget(reinterpret_cast<ValueType*>(querySet->GetVector(i)), p_index->m_pQuantizer);
                     results[i].Reset();
                 }
+
+                std::int32_t dim = queryVectorSet->m_dimension;
+                perVectorDataSize = queryVectorSet->m_perVectorDataSize;
+
+                SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "Vector Dimension:%d, Per-vector Size: %d\n", 
+                    dim, perVectorDataSize);
+
+                std::hash<std::string> hasher;
+                std::map<size_t, size_t> hashedQueryCount;
+
+                std::map<char*, size_t> duplicateChecker;
+
+                // Checks
+                for (int i = 0; i < numQueries; i++)
+                {
+                    std::string toHashQueryStr = std::string(
+                        (char*)queryVectorSet->GetVector(i), perVectorDataSize);
+
+                    size_t hashed = hasher(toHashQueryStr);
+                    hashedQuery.push_back(hashed);
+
+                    if (hashedQueryCount.find(hashed) == hashedQueryCount.end())
+                    {
+                        hashedQueryCount[hashed] = 1;
+                    }
+                    else
+                    {
+                        hashedQueryCount[hashed]++;
+                    }
+                }
+
+                std::vector<size_t> hashedQueryCountVec;
+
+                // Check hash
+                // for (auto it = hashedQueryCount.begin(); it != hashedQueryCount.end(); it++)
+                // {
+                //     hashedQueryCountVec.push_back(it->second);
+                // }
+
+                // std::sort(hashedQueryCountVec.begin(), 
+                //     hashedQueryCountVec.end()
+                //     );        
+
+                // std::reverse(hashedQueryCountVec.begin(), hashedQueryCountVec.end());
+
+                // for (int i = 0; i < numQueries; i++) { 
+                //     SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "Num count: %d\n", 
+                //         hashedQueryCountVec[i]
+                //     );
+                //     if (i > 100)
+                //         break;
+                // }
+                
+                // SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "Press any key to start...\n");
+                // getchar();
 
 
                 SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "Start ANN Search...\n");
@@ -293,6 +610,14 @@ namespace SPTAG {
                     },
                     "%.3lf");
 
+                SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nCache Get Latency Distribution:\n");
+                PrintPercentiles<double, SPANN::SearchStats>(stats,
+                    [](const SPANN::SearchStats& ss) -> double
+                    {
+                        return ss.m_cacheGetLatency;
+                    },
+                    "%.3lf");
+
                 SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nHead Latency Distribution:\n");
                 PrintPercentiles<double, SPANN::SearchStats>(stats,
                     [](const SPANN::SearchStats& ss) -> double
@@ -306,6 +631,14 @@ namespace SPTAG {
                     [](const SPANN::SearchStats& ss) -> double
                     {
                         return ss.m_exLatency;
+                    },
+                    "%.3lf");
+
+                SPTAGLIB_LOG(Helper::LogLevel::LL_Info, "\nCache Put Latency Distribution:\n");
+                PrintPercentiles<double, SPANN::SearchStats>(stats,
+                    [](const SPANN::SearchStats& ss) -> double
+                    {
+                        return ss.m_cacheInsertLatency;
                     },
                     "%.3lf");
 

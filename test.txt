@@ -1,0 +1,240 @@
+[1] Using AVX512 InstructionSet!
+[1] Set QuantizerFile = 
+[1] Setting Dim with value 100
+[1] Setting DistCalcMethod with value L2
+[1] Setting IndexAlgoType with value BKT
+[1] Setting IndexDirectory with value ../../dataset/SPACEV1B-RE
+[1] Setting QueryPath with value ../../dataset/extended-full-set/spacev1b-query-log-extended.bin
+[1] Setting QueryType with value DEFAULT
+[1] Setting TruthPath with value ../../dataset/extended-full-set/spacev1b-query-log-truth-extended.bin
+[1] Setting TruthType with value DEFAULT
+[1] Setting ValueType with value Int8
+[1] Setting VectorPath with value ../../dataset/SPACEV1B/vectors.bin/vectors.bin
+[1] Setting VectorType with value DEFAULT
+[1] Setting WarmupPath with value 
+[1] Setting WarmupType with value DEFAULT
+[1] Setting isExecute with value false
+[1] Setting SearchInternalResultNum with value 96
+[1] Setting BuildSsdIndex with value false
+[1] Setting HashTableExponent with value 4
+[1] Setting InternalResultNum with value 64
+[1] Setting isExecute with value true
+[1] Setting MaxCheck with value 1024
+[1] Setting MaxDistRatio with value 8.0
+[1] Setting NumberOfThreads with value 1
+[1] Setting PostingPageLimit with value 3
+[1] Setting ReplicaCount with value 8
+[1] Setting ResultNum with value 10
+[1] Setting SearchPostingPageLimit with value 3
+[1] Setting TmpDir with value /tmp/
+[1] Setting BKTKmeansK with value 32
+[1] Setting BKTLambdaFactor with value 1.0
+[1] Setting BKTLeafSize with value 8
+[1] Setting isExecute with value false
+[1] Setting NumberOfThreads with value 32
+[1] Setting Ratio with value 0.12
+[1] Setting SamplesNumber with value 1000
+[1] Setting SaveBKT with value false
+[1] Setting SelectThreshold with value 10
+[1] Setting SplitFactor with value 6
+[1] Setting SplitThreshold with value 25
+[1] Setting TreeNumber with value 1
+[1] Load Vector(1402020720,100)
+[1] Begin Select Head...
+[1] select head time: 0.00s
+[1] Begin Build Head...
+[1] select head time: 0.00s build head time: 0.00s
+[1] Begin Build SSDIndex...
+[1] Setting TreeFilePath with value tree.bin
+[1] Setting GraphFilePath with value graph.bin
+[1] Setting VectorFilePath with value vectors.bin
+[1] Setting DeleteVectorFilePath with value deletes.bin
+[1] Setting EnableBfs with value 0
+[1] Setting BKTNumber with value 1
+[1] Setting BKTKmeansK with value 32
+[1] Setting BKTLeafSize with value 8
+[1] Setting Samples with value 1000
+[1] Setting BKTLambdaFactor with value 0.100000
+[1] Setting TPTNumber with value 32
+[1] Setting TPTLeafSize with value 2000
+[1] Setting NumTopDimensionTpTreeSplit with value 5
+[1] Setting NeighborhoodSize with value 32
+[1] Setting GraphNeighborhoodScale with value 2.000000
+[1] Setting GraphCEFScale with value 2.000000
+[1] Setting RefineIterations with value 3
+[1] Setting EnableRebuild with value 0
+[1] Setting CEF with value 1000
+[1] Setting AddCEF with value 500
+[1] Setting MaxCheckForRefineGraph with value 16324
+[1] Setting RNGFactor with value 1.000000
+[1] Setting GPUGraphType with value 2
+[1] Setting GPURefineSteps with value 0
+[1] Setting GPURefineDepth with value 30
+[1] Setting GPULeafSize with value 500
+[1] Setting HeadNumGPUs with value 1
+[1] Setting TPTBalanceFactor with value 2
+[1] Setting NumberOfThreads with value 64
+[1] Setting DistCalcMethod with value L2
+[1] Setting DeletePercentageForRefine with value 0.400000
+[1] Setting AddCountForRebuild with value 1000
+[1] Setting MaxCheck with value 16324
+[1] Setting ThresholdOfNumberOfContinuousNoBetterPropagation with value 3
+[1] Setting NumberOfInitialDynamicPivots with value 50
+[1] Setting NumberOfOtherDynamicPivots with value 4
+[1] Setting HashTableExponent with value 3
+[1] Setting DataBlockSize with value 1048576
+[1] Setting DataCapacity with value 2147483647
+[1] Setting MetaRecordSize with value 10
+[1] Load Vector (168524169,100) Finish!
+[1] Load BKT (1,168524171) Finish!
+[1] Load RNG (168524169,32) Finish!
+[1] Load DeleteID (168524169,1) Finish!
+[1] Setting NumberOfThreads with value 1
+[1] Setting MaxCheck with value 1024
+[1] Setting HashTableExponent with value 4
+[1] Load index with posting page limit:3
+[1] Finish reading header info, list count 168524169, total doc count 1402020720, dimension 100, list page offset 493724.
+[1] Big page (>4K): list count 77014651, total element count 4850690508.
+[1] Total Element Count: 6918378500
+[1] Page Count Dist: 0 3497041
+[1] Page Count Dist: 1 88012477
+[1] Page Count Dist: 2 61914287
+[1] Page Count Dist: 3 15100364
+[1] select head time: 0.00s build head time: 0.00s build ssd time: 48.00s
+[1] Start loading QuerySet...
+[1] Load Vector(997710,100)
+[1] Vector Dimension:100, Per-vector Size: 100
+[1] Start ANN Search...
+[1] Searching: numThread: 1, numQueries: 997710.
+[1] Sent 0.00%... Internal result num: 96, Current hit ratio: -nan
+[1] Sent 1.64%... Internal result num: 96, Current hit ratio: 0.3790
+[1] Sent 3.28%... Internal result num: 96, Current hit ratio: 0.3831
+[1] Sent 4.93%... Internal result num: 96, Current hit ratio: 0.3877
+[1] Sent 6.57%... Internal result num: 96, Current hit ratio: 0.3915
+[1] Sent 8.21%... Internal result num: 96, Current hit ratio: 0.3909
+[1] Sent 9.85%... Internal result num: 96, Current hit ratio: 0.3908
+[1] Sent 11.50%... Internal result num: 96, Current hit ratio: 0.3902
+[1] Sent 13.14%... Internal result num: 96, Current hit ratio: 0.3893
+[1] Sent 14.78%... Internal result num: 96, Current hit ratio: 0.3886
+[1] Sent 16.42%... Internal result num: 96, Current hit ratio: 0.3884
+[1] Sent 18.06%... Internal result num: 96, Current hit ratio: 0.3882
+[1] Sent 19.71%... Internal result num: 96, Current hit ratio: 0.3874
+[1] Sent 21.35%... Internal result num: 96, Current hit ratio: 0.3876
+[1] Sent 22.99%... Internal result num: 96, Current hit ratio: 0.3880
+[1] Sent 24.63%... Internal result num: 96, Current hit ratio: 0.3879
+[1] Sent 26.27%... Internal result num: 96, Current hit ratio: 0.3875
+[1] Sent 27.92%... Internal result num: 96, Current hit ratio: 0.3875
+[1] Sent 29.56%... Internal result num: 96, Current hit ratio: 0.3870
+[1] Sent 31.20%... Internal result num: 96, Current hit ratio: 0.3870
+[1] Sent 32.84%... Internal result num: 96, Current hit ratio: 0.3870
+[1] Sent 34.49%... Internal result num: 96, Current hit ratio: 0.3871
+[1] Sent 36.13%... Internal result num: 96, Current hit ratio: 0.3871
+[1] Sent 37.77%... Internal result num: 96, Current hit ratio: 0.3870
+[1] Sent 39.41%... Internal result num: 96, Current hit ratio: 0.3867
+[1] Sent 41.05%... Internal result num: 96, Current hit ratio: 0.3867
+[1] Sent 42.70%... Internal result num: 96, Current hit ratio: 0.3865
+[1] Sent 44.34%... Internal result num: 96, Current hit ratio: 0.3867
+[1] Sent 45.98%... Internal result num: 96, Current hit ratio: 0.3868
+[1] Sent 47.62%... Internal result num: 96, Current hit ratio: 0.3867
+[1] Sent 49.26%... Internal result num: 96, Current hit ratio: 0.3866
+[1] Sent 50.91%... Internal result num: 96, Current hit ratio: 0.3866
+[1] Sent 52.55%... Internal result num: 96, Current hit ratio: 0.3868
+[1] Sent 54.19%... Internal result num: 96, Current hit ratio: 0.3866
+[1] Sent 55.83%... Internal result num: 96, Current hit ratio: 0.3868
+[1] Sent 57.48%... Internal result num: 96, Current hit ratio: 0.3868
+[1] Sent 59.12%... Internal result num: 96, Current hit ratio: 0.3869
+[1] Sent 60.76%... Internal result num: 96, Current hit ratio: 0.3870
+[1] Sent 62.40%... Internal result num: 96, Current hit ratio: 0.3869
+[1] Sent 64.04%... Internal result num: 96, Current hit ratio: 0.3868
+[1] Sent 65.69%... Internal result num: 96, Current hit ratio: 0.3866
+[1] Sent 67.33%... Internal result num: 96, Current hit ratio: 0.3866
+[1] Sent 68.97%... Internal result num: 96, Current hit ratio: 0.3866
+[1] Sent 70.61%... Internal result num: 96, Current hit ratio: 0.3866
+[1] Sent 72.26%... Internal result num: 96, Current hit ratio: 0.3865
+[1] Sent 73.90%... Internal result num: 96, Current hit ratio: 0.3864
+[1] Sent 75.54%... Internal result num: 96, Current hit ratio: 0.3863
+[1] Sent 77.18%... Internal result num: 96, Current hit ratio: 0.3864
+[1] Sent 78.82%... Internal result num: 96, Current hit ratio: 0.3862
+[1] Sent 80.47%... Internal result num: 96, Current hit ratio: 0.3862
+[1] Sent 82.11%... Internal result num: 96, Current hit ratio: 0.3861
+[1] Sent 83.75%... Internal result num: 96, Current hit ratio: 0.3861
+[1] Sent 85.39%... Internal result num: 96, Current hit ratio: 0.3861
+[1] Sent 87.03%... Internal result num: 96, Current hit ratio: 0.3861
+[1] Sent 88.68%... Internal result num: 96, Current hit ratio: 0.3861
+[1] Sent 90.32%... Internal result num: 96, Current hit ratio: 0.3861
+[1] Sent 91.96%... Internal result num: 96, Current hit ratio: 0.3860
+[1] Sent 93.60%... Internal result num: 96, Current hit ratio: 0.3860
+[1] Sent 95.25%... Internal result num: 96, Current hit ratio: 0.3860
+[1] Sent 96.89%... Internal result num: 96, Current hit ratio: 0.3860
+[1] Sent 98.53%... Internal result num: 96, Current hit ratio: 0.3860
+[1] Delete workspace happens!
+[1] Finish sending in 2967.923 seconds, actuallQPS is 336.16, query count 997710.
+[1] Hits 385000/997710
+[1] 
+Finish ANN Search...
+[1] Load Vector(1402020720,100)
+[1] 
+Load VectorSet(1402020720,100).
+[1] Start loading TruthFile...
+[1] Recall10@10: 0.629797 MRR@10: 0.880835
+[1] 
+Ex Elements Count:
+[1] Avg	50tiles	90tiles	95tiles	99tiles	99.9tiles	Max
+[1] 3971.724	3965.000	4649.000	4878.000	5368.000	5958.000	6791.000
+[1] 
+Cache Get Latency Distribution:
+[1] Avg	50tiles	90tiles	95tiles	99tiles	99.9tiles	Max
+[1] 0.006	0.006	0.009	0.011	0.024	0.035	3.592
+[1] 
+Head Latency Distribution:
+[1] Avg	50tiles	90tiles	95tiles	99tiles	99.9tiles	Max
+[1] 0.467	0.538	0.965	1.125	1.557	2.884	30.384
+[1] 
+Ex Latency Distribution:
+[1] Avg	50tiles	90tiles	95tiles	99tiles	99.9tiles	Max
+[1] 4.084	4.034	6.397	6.762	9.961	12.275	16.384
+[1] 
+Cache Put Latency Distribution:
+[1] Avg	50tiles	90tiles	95tiles	99tiles	99.9tiles	Max
+[1] 3.252	3.203	5.564	5.928	9.109	11.423	15.326
+[1] 
+Total Latency Distribution:
+[1] Avg	50tiles	90tiles	95tiles	99tiles	99.9tiles	Max
+[1] 2.975	2.882	6.764	7.294	9.464	12.861	35.886
+[1] 
+Total Disk Page Access Distribution:
+[1] Avg	50tiles	90tiles	95tiles	99tiles	99.9tiles	Max
+[1] 142.693	 143	 160	 165	 176	 191	 213
+[1] 
+Total Disk IO Distribution:
+[1] Avg	50tiles	90tiles	95tiles	99tiles	99.9tiles	Max
+[1] 91.451	  92	  93	  93	  93	  95	  96
+[1] 
+[1] Recall@10: 0.629797 MRR@10: 0.880835
+[1] 
+
+
+
+[1] Sent 96.89%... Internal result num: 96, Current hit ratio: 0.3860
+[1] Sent 98.53%... Internal result num: 96, Current hit ratio: 0.3860
+[1] Delete workspace happens!
+[1] Finish sending in 762.153 seconds, actuallQPS is 1309.07, query count 997710.
+
+[1] Sent 95.25%... Internal result num: 96, Current hit ratio: 0.0000
+[1] Sent 96.89%... Internal result num: 96, Current hit ratio: 0.0000
+[1] Sent 98.53%... Internal result num: 96, Current hit ratio: 0.0000
+[1] Delete workspace happens!
+[1] Finish sending in 1194.948 seconds, actuallQPS is 834.94, query count 997710.
+[1] Hits 0/997710
+
+
+[1] Sent 98.53%... Internal result num: 96, Current hit ratio: 0.6671
+[1] Delete workspace happens!
+[1] Finish sending in 463.595 seconds, actuallQPS is 2152.12, query count 997710.
+[1] Hits 665513/997710
+
+
+
+
+
+

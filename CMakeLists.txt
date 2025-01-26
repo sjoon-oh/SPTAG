@@ -23,10 +23,10 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
     if (CXX_COMPILER_VERSION VERSION_LESS 5.0)
         message(FATAL_ERROR "GCC version must be at least 5.0!")
     endif()
-    set (CMAKE_CXX_FLAGS "-Wall -Wunreachable-code -Wno-reorder -Wno-delete-non-virtual-dtor -Wno-sign-compare -Wno-unknown-pragmas -Wcast-align -lm -lrt -std=c++14 -fopenmp")
+    set (CMAKE_CXX_FLAGS "-w -Wunreachable-code -Wno-reorder -Wno-delete-non-virtual-dtor -Wno-sign-compare -Wno-unknown-pragmas -Wcast-align -lm -lrt -std=c++14 -fopenmp -ggdb")
+    # set (CMAKE_CXX_FLAGS "-Wall -Wunreachable-code -Wno-reorder -Wno-delete-non-virtual-dtor -Wno-sign-compare -Wno-unknown-pragmas -Wcast-align -lm -lrt -std=c++14 -fopenmp")
     set (CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3 -march=native")
     set (CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG")
-
 
     find_path(NUMA_INCLUDE_DIR NAME numa.h
       HINTS $ENV{HOME}/local/include /opt/local/include /usr/local/include /usr/include)
@@ -103,7 +103,11 @@ else()
     message (FATAL_ERROR "Could no find openmp!")
 endif()
 
-find_package(Boost 1.66 COMPONENTS system thread serialization wserialization regex filesystem)
+set(BOOST_ROOT "/opt/boost_1_86")
+set(Boost_INCLUDE_DIR "/opt/boost_1_86/include")
+set(Boost_LIBRARY_DIR "/opt/boost_1_86/lib")
+
+find_package(Boost 1.66 COMPONENTS system thread serialization wserialization regex filesystem program_options)
 if (Boost_FOUND)
     include_directories (${Boost_INCLUDE_DIR})
     link_directories (${Boost_LIBRARY_DIR})
@@ -115,12 +119,19 @@ else()
     message (FATAL_ERROR "Could not find Boost >= 1.67!")
 endif()
 
-option(GPU "GPU" ON)
+# Added submodule: gentle-pekin-duck
+add_subdirectory (ThirdParty/gentle-pekin-duck)
+add_subdirectory (ThirdParty/TopKache)
+
+
+# Disabled GPU support for blanc
+option(GPU "GPU" OFF)
 option(LIBRARYONLY "LIBRARYONLY" OFF)
 
 add_subdirectory (ThirdParty/zstd/build/cmake)
 
+# Disabled unnecessaries
 add_subdirectory (AnnService)
-add_subdirectory (Test)
-add_subdirectory (GPUSupport)
-add_subdirectory (Wrappers)
+# add_subdirectory (Test)
+# add_subdirectory (GPUSupport)
+# add_subdirectory (Wrappers)

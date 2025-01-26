@@ -239,7 +239,6 @@ public:
     }
 
 
-protected:
     const void* m_target;
 
     void* m_quantizedTarget;
